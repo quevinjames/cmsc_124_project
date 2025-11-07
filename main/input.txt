@@ -1,5 +1,4 @@
 BTW start of the program
-I HAS A age 21
 HAI
     WAZZUP
         BTW variable dec

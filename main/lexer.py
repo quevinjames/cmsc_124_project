@@ -114,9 +114,23 @@ class LOLCODELexer:
         patterns.append((re.compile(r'[,!?]'), 'Delimiter', 'OTHER'))
         
         return patterns
+
+    def assign_linenum(self, text):
+        lines = text.split('\n')
+        line_count = 1
+        new_lines = []
+        
+        for line in lines:
+            new_line = (f"{line_count:<3}| ") + line
+            new_lines.append(new_line)
+            line_count+=1
+
+        return new_lines
+        
+
     
     def remove_comments(self, text):
-        lines = text.split('\n')
+        lines = text
         cleaned_lines = []
         in_multiline = False
         
@@ -129,27 +143,48 @@ class LOLCODELexer:
                     cleaned_lines.append(before_btw)
             else:
                 cleaned_lines.append(line)
+
         
+       
         return '\n'.join(cleaned_lines)
     
     def tokenize_line(self, line):
         tokens = []
-        pos = 0
+        pos = 4
+        line_count_it = 0
         in_string = False
         string_content = ""
+        line_number = []
+        final_line_num = 0
+
+
+        while line_count_it < pos:
+            line_number.append(line[line_count_it])
+            line_count_it+=1
         
+        line_num_str = "".join(line_number)
+        
+           
+        match = re.search(r"([0-9]*)[ ]+\|", line_num_str)
+        if match:
+            final_line_num = int(match.group(1))
+            
+        print(f"\nLine number: {final_line_num}\n")
+
+
         while pos < len(line):
+
             # Handle string literals
             if line[pos] == '"':
                 if in_string:
                     # End of string
-                    tokens.append(('String Literal', string_content, 'YARN'))
-                    tokens.append(('String Delimiter', '"', 'STRING_DELIM'))
+                    tokens.append(('String Literal', string_content, 'YARN', final_line_num))
+                    tokens.append(('String Delimiter', '"', 'STRING_DELIM', final_line_num))
                     in_string = False
                     string_content = ""
                 else:
                     # Start of string
-                    tokens.append(('String Delimiter', '"', 'STRING_DELIM'))
+                    tokens.append(('String Delimiter', '"', 'STRING_DELIM', final_line_num))
                     in_string = True
                 pos += 1
                 continue
@@ -171,7 +206,7 @@ class LOLCODELexer:
                 match = regex.match(line, pos)
                 if match:
                     token_text = match.group(0)
-                    tokens.append((description, token_text, token_type))
+                    tokens.append((description, token_text, token_type, final_line_num))
                     pos = match.end()
                     matched = True
                     break
@@ -179,11 +214,14 @@ class LOLCODELexer:
             # Skip unknown characters
             if not matched:
                 pos += 1
+
+            line_number = []
         
         return tokens
     
     def update_counters(self, tokens):
-        for _, _, token_type in tokens:
+        for token in tokens:
+            token_type = token[2]  # Token type is now at index 2
             if token_type == 'KEYWORD' or token_type == 'TYPE':
                 self.keyword_count += 1
             elif token_type == 'IDENTIFIER':
@@ -202,12 +240,18 @@ class LOLCODELexer:
                 self.other_symbol_count += 1
     
     def tokenize(self, text):
+
+        text_counter = self.assign_linenum(text)
+
+
         # Remove comments first
-        text = self.remove_comments(text)
+        final_text = self.remove_comments(text_counter)
+
+        print(final_text)
         
         # Tokenize each line
         all_tokens = []
-        for line in text.split('\n'):
+        for line in final_text.split('\n'):
             line = line.strip()
             if line:
                 tokens = self.tokenize_line(line)
@@ -219,8 +263,8 @@ class LOLCODELexer:
         return all_tokens
     
     def print_tokens(self, tokens):
-        for description, token, _ in tokens:
-            print(f"{description} {token}")
+        for description, token, _, line_num in tokens:
+            print(f"Line {line_num}: {description} {token}")
     
     def print_statistics(self):
         print("\n===========================================")
@@ -246,6 +290,7 @@ def main():
     lexer = LOLCODELexer()
     tokens = lexer.tokenize(text)
 
+    
     print("====================== All Tokens ======================\n")
     for i in tokens:
         print(f"Token:\t{i}\n")
@@ -268,10 +313,9 @@ def main():
     else:
         print("Valid Program Start and End\n")
     
-    
+    closed = False
     for token in range(0, len(tokens) - 1):
         if tokens[token][1] == "WAZZUP":
-            closed = False
             for i in range (token, len(tokens) - 1):
         
                 if tokens[i][1] == "BUHBYE":
@@ -287,10 +331,14 @@ def main():
     
     print("======================================================================\n")
 
+    print("\n\n")
+
+
+    print("\n\n")
+
+
     
     return 0
 
 
 main()
-
-
