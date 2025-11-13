@@ -63,15 +63,15 @@ class LOLGui(tk.Tk):
         yscroll.pack(side=tk.RIGHT, fill=tk.Y)
 
         # ---------- MIDDLE COLUMN: Lexemes ----------
-        tk.Label(middle, text="Symbol Table", font=("Segoe UI", 11, "bold"),
-                 bg="#E9EEF2", fg="#1A3340").pack(anchor="w", pady=(0, 3))
+        # tk.Label(middle, text="Symbol Table", font=("Segoe UI", 11, "bold"),
+        #          bg="#E9EEF2", fg="#1A3340").pack(anchor="w", pady=(0, 3))
 
-        self.lexeme_list = tk.Listbox(middle, font=("Consolas", 11), height=25,
-                                      bg="white", fg="black", selectbackground="#BFD7ED")
-        lex_scroll = ttk.Scrollbar(middle, orient="vertical", command=self.lexeme_list.yview)
-        self.lexeme_list.configure(yscrollcommand=lex_scroll.set)
-        self.lexeme_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        lex_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        # self.lexeme_list = tk.Listbox(middle, font=("Consolas", 11), height=25,
+        #                               bg="white", fg="black", selectbackground="#BFD7ED")
+        # lex_scroll = ttk.Scrollbar(middle, orient="vertical")
+        # self.lexeme_list.configure()
+        # self.lexeme_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # lex_scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
         # ---------- RIGHT COLUMN: Classification / Symbol Table ----------
         tk.Label(right, text="Lexemmes", font=("Segoe UI", 11, "bold"),
