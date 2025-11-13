@@ -1,0 +1,292 @@
+1  |
+2  | HAI
+3  |     WAZZUP
+4  |
+5  |         I HAS A monde
+6  |         I HAS A num ITZ 17
+7  |         I HAS A name ITZ "seventeen"
+8  |         I HAS A fnum ITZ 17.0
+9  |         I HAS A flag ITZ WIN
+10 |
+11 |         I HAS A sum ITZ SUM OF num AN 13
+12 |         I HAS A diff ITZ DIFF OF sum AN 17
+13 |         I HAS A prod ITZ PRODUKT OF 3 AN 4
+14 |         I HAS A quo ITZ QUOSHUNT OF 4 AN 5
+15 |     BUHBYE
+16 |
+17 |
+18 |     VISIBLE "declarations"
+19 |     VISIBLE monde
+20 |     VISIBLE num
+21 |     VISIBLE name
+22 |     VISIBLE fnum
+23 |     VISIBLE flag
+24 |
+25 |     VISIBLE sum
+26 |     VISIBLE diff
+27 |     VISIBLE prod
+28 |     VISIBLE quo
+29 |
+30 |
+31 |     VISIBLE SUM OF PRODUKT OF 3 AN 5 AN BIGGR OF DIFF OF 17 AN 2 AN 5
+32 |     VISIBLE BIGGR OF PRODUKT OF 11 AN 2 AN QUOSHUNT OF SUM OF 3 AN 5 AN 2
+33 | KTHXBYE
+34 |
+35 |
+36 |
+Line number: 1
+Line number: 2
+Line number: 3
+Line number: 4
+Line number: 5
+Line number: 6
+Line number: 7
+Line number: 8
+Line number: 9
+Line number: 10
+Line number: 11
+Line number: 12
+Line number: 13
+Line number: 14
+Line number: 15
+Line number: 16
+Line number: 17
+Line number: 18
+Line number: 19
+Line number: 20
+Line number: 21
+Line number: 22
+Line number: 23
+Line number: 24
+Line number: 25
+Line number: 26
+Line number: 27
+Line number: 28
+Line number: 29
+Line number: 30
+Line number: 31
+Line number: 32
+Line number: 33
+Line number: 34
+Line number: 35
+Line number: 36
+====================== All Tokens ======================
+Token:	('Code Delimiter', 'HAI', 'KEYWORD', 2)
+Token:	('Variable List Delimiter', 'WAZZUP', 'KEYWORD', 3)
+Token:	('Variable Declaration', 'I HAS A', 'KEYWORD', 5)
+Token:	('Variable Identifier', 'monde', 'IDENTIFIER', 5)
+Token:	('Variable Declaration', 'I HAS A', 'KEYWORD', 6)
+Token:	('Variable Identifier', 'num', 'IDENTIFIER', 6)
+Token:	('Variable Assignment (following I HAS A)', 'ITZ', 'KEYWORD', 6)
+Token:	('Integer Literal', '17', 'NUMBR', 6)
+Token:	('Variable Declaration', 'I HAS A', 'KEYWORD', 7)
+Token:	('Variable Identifier', 'name', 'IDENTIFIER', 7)
+Token:	('Variable Assignment (following I HAS A)', 'ITZ', 'KEYWORD', 7)
+Token:	('String Delimiter', '"', 'STRING_DELIM', 7)
+Token:	('String Literal', 'seventeen', 'YARN', 7)
+Token:	('String Delimiter', '"', 'STRING_DELIM', 7)
+Token:	('Variable Declaration', 'I HAS A', 'KEYWORD', 8)
+Token:	('Variable Identifier', 'fnum', 'IDENTIFIER', 8)
+Token:	('Variable Assignment (following I HAS A)', 'ITZ', 'KEYWORD', 8)
+Token:	('Float Literal', '17.0', 'NUMBAR', 8)
+Token:	('Variable Declaration', 'I HAS A', 'KEYWORD', 9)
+Token:	('Variable Identifier', 'flag', 'IDENTIFIER', 9)
+Token:	('Variable Assignment (following I HAS A)', 'ITZ', 'KEYWORD', 9)
+Token:	('Boolean Value (True)', 'WIN', 'TROOF', 9)
+Token:	('Variable Declaration', 'I HAS A', 'KEYWORD', 11)
+Token:	('Variable Identifier', 'sum', 'IDENTIFIER', 11)
+Token:	('Variable Assignment (following I HAS A)', 'ITZ', 'KEYWORD', 11)
+Token:	('Arithmetic Operator', 'SUM OF', 'KEYWORD', 11)
+Token:	('Variable Identifier', 'num', 'IDENTIFIER', 11)
+Token:	('Multiple Parameter Separator', 'AN', 'OPERATOR', 11)
+Token:	('Integer Literal', '13', 'NUMBR', 11)
+Token:	('Variable Declaration', 'I HAS A', 'KEYWORD', 12)
+Token:	('Variable Identifier', 'diff', 'IDENTIFIER', 12)
+Token:	('Variable Assignment (following I HAS A)', 'ITZ', 'KEYWORD', 12)
+Token:	('Arithmetic Operator', 'DIFF OF', 'KEYWORD', 12)
+Token:	('Variable Identifier', 'sum', 'IDENTIFIER', 12)
+Token:	('Multiple Parameter Separator', 'AN', 'OPERATOR', 12)
+Token:	('Integer Literal', '17', 'NUMBR', 12)
+Token:	('Variable Declaration', 'I HAS A', 'KEYWORD', 13)
+Token:	('Variable Identifier', 'prod', 'IDENTIFIER', 13)
+Token:	('Variable Assignment (following I HAS A)', 'ITZ', 'KEYWORD', 13)
+Token:	('Arithmetic Operator', 'PRODUKT OF', 'KEYWORD', 13)
+Token:	('Integer Literal', '3', 'NUMBR', 13)
+Token:	('Multiple Parameter Separator', 'AN', 'OPERATOR', 13)
+Token:	('Integer Literal', '4', 'NUMBR', 13)
+Token:	('Variable Declaration', 'I HAS A', 'KEYWORD', 14)
+Token:	('Variable Identifier', 'quo', 'IDENTIFIER', 14)
+Token:	('Variable Assignment (following I HAS A)', 'ITZ', 'KEYWORD', 14)
+Token:	('Arithmetic Operator', 'QUOSHUNT OF', 'KEYWORD', 14)
+Token:	('Integer Literal', '4', 'NUMBR', 14)
+Token:	('Multiple Parameter Separator', 'AN', 'OPERATOR', 14)
+Token:	('Integer Literal', '5', 'NUMBR', 14)
+Token:	('Variable List Delimiter', 'BUHBYE', 'KEYWORD', 15)
+Token:	('Output Statement', 'VISIBLE', 'KEYWORD', 18)
+Token:	('String Delimiter', '"', 'STRING_DELIM', 18)
+Token:	('String Literal', 'declarations', 'YARN', 18)
+Token:	('String Delimiter', '"', 'STRING_DELIM', 18)
+Token:	('Output Statement', 'VISIBLE', 'KEYWORD', 19)
+Token:	('Variable Identifier', 'monde', 'IDENTIFIER', 19)
+Token:	('Output Statement', 'VISIBLE', 'KEYWORD', 20)
+Token:	('Variable Identifier', 'num', 'IDENTIFIER', 20)
+Token:	('Output Statement', 'VISIBLE', 'KEYWORD', 21)
+Token:	('Variable Identifier', 'name', 'IDENTIFIER', 21)
+Token:	('Output Statement', 'VISIBLE', 'KEYWORD', 22)
+Token:	('Variable Identifier', 'fnum', 'IDENTIFIER', 22)
+Token:	('Output Statement', 'VISIBLE', 'KEYWORD', 23)
+Token:	('Variable Identifier', 'flag', 'IDENTIFIER', 23)
+Token:	('Output Statement', 'VISIBLE', 'KEYWORD', 25)
+Token:	('Variable Identifier', 'sum', 'IDENTIFIER', 25)
+Token:	('Output Statement', 'VISIBLE', 'KEYWORD', 26)
+Token:	('Variable Identifier', 'diff', 'IDENTIFIER', 26)
+Token:	('Output Statement', 'VISIBLE', 'KEYWORD', 27)
+Token:	('Variable Identifier', 'prod', 'IDENTIFIER', 27)
+Token:	('Output Statement', 'VISIBLE', 'KEYWORD', 28)
+Token:	('Variable Identifier', 'quo', 'IDENTIFIER', 28)
+Token:	('Output Statement', 'VISIBLE', 'KEYWORD', 31)
+Token:	('Arithmetic Operator', 'SUM OF', 'KEYWORD', 31)
+Token:	('Arithmetic Operator', 'PRODUKT OF', 'KEYWORD', 31)
+Token:	('Integer Literal', '3', 'NUMBR', 31)
+Token:	('Multiple Parameter Separator', 'AN', 'OPERATOR', 31)
+Token:	('Integer Literal', '5', 'NUMBR', 31)
+Token:	('Multiple Parameter Separator', 'AN', 'OPERATOR', 31)
+Token:	('Arithmetic Operator', 'BIGGR OF', 'KEYWORD', 31)
+Token:	('Arithmetic Operator', 'DIFF OF', 'KEYWORD', 31)
+Token:	('Integer Literal', '17', 'NUMBR', 31)
+Token:	('Multiple Parameter Separator', 'AN', 'OPERATOR', 31)
+Token:	('Integer Literal', '2', 'NUMBR', 31)
+Token:	('Multiple Parameter Separator', 'AN', 'OPERATOR', 31)
+Token:	('Integer Literal', '5', 'NUMBR', 31)
+Token:	('Output Statement', 'VISIBLE', 'KEYWORD', 32)
+Token:	('Arithmetic Operator', 'BIGGR OF', 'KEYWORD', 32)
+Token:	('Arithmetic Operator', 'PRODUKT OF', 'KEYWORD', 32)
+Token:	('Integer Literal', '11', 'NUMBR', 32)
+Token:	('Multiple Parameter Separator', 'AN', 'OPERATOR', 32)
+Token:	('Integer Literal', '2', 'NUMBR', 32)
+Token:	('Multiple Parameter Separator', 'AN', 'OPERATOR', 32)
+Token:	('Arithmetic Operator', 'QUOSHUNT OF', 'KEYWORD', 32)
+Token:	('Arithmetic Operator', 'SUM OF', 'KEYWORD', 32)
+Token:	('Integer Literal', '3', 'NUMBR', 32)
+Token:	('Multiple Parameter Separator', 'AN', 'OPERATOR', 32)
+Token:	('Integer Literal', '5', 'NUMBR', 32)
+Token:	('Multiple Parameter Separator', 'AN', 'OPERATOR', 32)
+Token:	('Integer Literal', '2', 'NUMBR', 32)
+Token:	('Code Delimiter', 'KTHXBYE', 'KEYWORD', 33)
+========================================================
+Line 2: Code Delimiter HAI
+Line 3: Variable List Delimiter WAZZUP
+Line 5: Variable Declaration I HAS A
+Line 5: Variable Identifier monde
+Line 6: Variable Declaration I HAS A
+Line 6: Variable Identifier num
+Line 6: Variable Assignment (following I HAS A) ITZ
+Line 6: Integer Literal 17
+Line 7: Variable Declaration I HAS A
+Line 7: Variable Identifier name
+Line 7: Variable Assignment (following I HAS A) ITZ
+Line 7: String Delimiter "
+Line 7: String Literal seventeen
+Line 7: String Delimiter "
+Line 8: Variable Declaration I HAS A
+Line 8: Variable Identifier fnum
+Line 8: Variable Assignment (following I HAS A) ITZ
+Line 8: Float Literal 17.0
+Line 9: Variable Declaration I HAS A
+Line 9: Variable Identifier flag
+Line 9: Variable Assignment (following I HAS A) ITZ
+Line 9: Boolean Value (True) WIN
+Line 11: Variable Declaration I HAS A
+Line 11: Variable Identifier sum
+Line 11: Variable Assignment (following I HAS A) ITZ
+Line 11: Arithmetic Operator SUM OF
+Line 11: Variable Identifier num
+Line 11: Multiple Parameter Separator AN
+Line 11: Integer Literal 13
+Line 12: Variable Declaration I HAS A
+Line 12: Variable Identifier diff
+Line 12: Variable Assignment (following I HAS A) ITZ
+Line 12: Arithmetic Operator DIFF OF
+Line 12: Variable Identifier sum
+Line 12: Multiple Parameter Separator AN
+Line 12: Integer Literal 17
+Line 13: Variable Declaration I HAS A
+Line 13: Variable Identifier prod
+Line 13: Variable Assignment (following I HAS A) ITZ
+Line 13: Arithmetic Operator PRODUKT OF
+Line 13: Integer Literal 3
+Line 13: Multiple Parameter Separator AN
+Line 13: Integer Literal 4
+Line 14: Variable Declaration I HAS A
+Line 14: Variable Identifier quo
+Line 14: Variable Assignment (following I HAS A) ITZ
+Line 14: Arithmetic Operator QUOSHUNT OF
+Line 14: Integer Literal 4
+Line 14: Multiple Parameter Separator AN
+Line 14: Integer Literal 5
+Line 15: Variable List Delimiter BUHBYE
+Line 18: Output Statement VISIBLE
+Line 18: String Delimiter "
+Line 18: String Literal declarations
+Line 18: String Delimiter "
+Line 19: Output Statement VISIBLE
+Line 19: Variable Identifier monde
+Line 20: Output Statement VISIBLE
+Line 20: Variable Identifier num
+Line 21: Output Statement VISIBLE
+Line 21: Variable Identifier name
+Line 22: Output Statement VISIBLE
+Line 22: Variable Identifier fnum
+Line 23: Output Statement VISIBLE
+Line 23: Variable Identifier flag
+Line 25: Output Statement VISIBLE
+Line 25: Variable Identifier sum
+Line 26: Output Statement VISIBLE
+Line 26: Variable Identifier diff
+Line 27: Output Statement VISIBLE
+Line 27: Variable Identifier prod
+Line 28: Output Statement VISIBLE
+Line 28: Variable Identifier quo
+Line 31: Output Statement VISIBLE
+Line 31: Arithmetic Operator SUM OF
+Line 31: Arithmetic Operator PRODUKT OF
+Line 31: Integer Literal 3
+Line 31: Multiple Parameter Separator AN
+Line 31: Integer Literal 5
+Line 31: Multiple Parameter Separator AN
+Line 31: Arithmetic Operator BIGGR OF
+Line 31: Arithmetic Operator DIFF OF
+Line 31: Integer Literal 17
+Line 31: Multiple Parameter Separator AN
+Line 31: Integer Literal 2
+Line 31: Multiple Parameter Separator AN
+Line 31: Integer Literal 5
+Line 32: Output Statement VISIBLE
+Line 32: Arithmetic Operator BIGGR OF
+Line 32: Arithmetic Operator PRODUKT OF
+Line 32: Integer Literal 11
+Line 32: Multiple Parameter Separator AN
+Line 32: Integer Literal 2
+Line 32: Multiple Parameter Separator AN
+Line 32: Arithmetic Operator QUOSHUNT OF
+Line 32: Arithmetic Operator SUM OF
+Line 32: Integer Literal 3
+Line 32: Multiple Parameter Separator AN
+Line 32: Integer Literal 5
+Line 32: Multiple Parameter Separator AN
+Line 32: Integer Literal 2
+Line 33: Code Delimiter KTHXBYE
+===========================================
+Keywords: 45
+Identifiers: 20
+NUMBR Literals: 17
+NUMBAR Literals: 1
+YARN Literals: 2
+TROOF Literals: 1
+Operators: 12
+Other Symbols: 4
+===========================================
+====================== Sample Syntax Analyzer======================
+Valid Program Start and End
+List Declaration Properly Closed
+======================================================================
