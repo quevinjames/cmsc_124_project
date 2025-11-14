@@ -1,10 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import os, importlib.util, re
+import os, importlib.util
 
-LEXER_MODULE_NAME = "lexer"
+LEXER_MODULE_NAME = "Lexer"
 
-# --- Import lexer.py ---
 def import_lexer_module():
     path = os.path.join(os.getcwd(), f"{LEXER_MODULE_NAME}.py")
     if not os.path.exists(path):
@@ -20,13 +19,12 @@ def import_lexer_module():
 
 LEXER_MOD = import_lexer_module()
 
-# --- GUI Class ---
 class LOLGui(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("LOLCODE Interpreter")
         self.geometry("1200x750")
-        self.configure(bg="#E9EEF2")  # light gray-blue background
+        self.configure(bg="#E9EEF2")
         self.current_file = None
         self.create_widgets()
 
@@ -63,15 +61,15 @@ class LOLGui(tk.Tk):
         yscroll.pack(side=tk.RIGHT, fill=tk.Y)
 
         # ---------- MIDDLE COLUMN: Lexemes ----------
-        # tk.Label(middle, text="Symbol Table", font=("Segoe UI", 11, "bold"),
-        #          bg="#E9EEF2", fg="#1A3340").pack(anchor="w", pady=(0, 3))
+        tk.Label(middle, text="Symbol Table", font=("Segoe UI", 11, "bold"),
+                 bg="#E9EEF2", fg="#1A3340").pack(anchor="w", pady=(0, 3))
 
-        # self.lexeme_list = tk.Listbox(middle, font=("Consolas", 11), height=25,
-        #                               bg="white", fg="black", selectbackground="#BFD7ED")
-        # lex_scroll = ttk.Scrollbar(middle, orient="vertical")
-        # self.lexeme_list.configure()
-        # self.lexeme_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        # lex_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.lexeme_list = tk.Listbox(middle, font=("Consolas", 11), height=25,
+                                      bg="white", fg="black", selectbackground="#BFD7ED")
+        lex_scroll = ttk.Scrollbar(middle, orient="vertical")
+        self.lexeme_list.configure()
+        self.lexeme_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        lex_scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
         # ---------- RIGHT COLUMN: Classification / Symbol Table ----------
         tk.Label(right, text="Lexemmes", font=("Segoe UI", 11, "bold"),
@@ -117,9 +115,9 @@ class LOLGui(tk.Tk):
             return
 
         code = self.source_text.get("1.0", tk.END)
-        lexer_class = getattr(LEXER_MOD, "LOLCODELexer", None)
+        lexer_class = getattr(LEXER_MOD, "Lexer", None)
         if not lexer_class:
-            messagebox.showerror("Error", "LOLCODELexer not found in lexer.py")
+            messagebox.showerror("Error", "Lexer not found in lexer.py")
             return
 
         try:
@@ -153,6 +151,6 @@ class LOLGui(tk.Tk):
             self.symbol_table.delete(i)
         self.console.delete("1.0", tk.END)
 
-if __name__ == "__main__":
+def start_gui():
     app = LOLGui()
     app.mainloop()
