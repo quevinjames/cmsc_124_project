@@ -1,19 +1,20 @@
 BTW start of the program
 HAI
-    WAZZUP
-        BTW variable dec
-        I HAS A monde
-        I HAS A num ITZ 7
-        I HAS A name ITZ "seventeen"
-        I HAS A fnum ITZ 17.0
-        I HAS A flag ITZ WIN
-        
-        I HAS A sum ITZ SUM OF num AN SUM OF 10 AN 13
-        I HAS A diff ITZ 
-        I OF sum AN 17
-        I HAS A prod ITZ PRODUKT OF 3 AN 4
-        I HAS A quo ITZ QUOSHUNT OF 4 AN 5
-    BUHBYE
+    BTW variable dec
+    I HAS A monde
+    I HAS A num ITZ 7
+    I HAS A name ITZ "seventeen"
+    I HAS A fnum ITZ 17.0
+    I HAS A flag ITZ WIN
+    
+    I HAS A sum ITZ SUM OF num AN SUM OF 10 AN 13
+    I HAS A diff
+    I HAS A sum ITZ 17
+    I HAS A prod ITZ PRODUKT OF 3 AN 4
+    I HAS A quo ITZ QUOSHUNT OF 4 AN 5
+
+
+    num R 15
 
 KTHXBYE
 

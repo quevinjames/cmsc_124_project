@@ -15,6 +15,7 @@ class Parser:
         self.stack = []                      
         self.errors = []         
         self.variables = {}
+        self.symbol_table = {}
     
     # ============= Tape Operations (Input Management) =============
     
@@ -145,15 +146,19 @@ class Parser:
         
         var_token = self.current_token()
         if var_token and var_token[2] == 'IDENTIFIER':
+            var_name = var_token[1]
             self.consume()
-            print(f"  ✓ Declared variable: {var_token[1]}")
             
             if self.current_token() and self.current_token()[1] == 'ITZ':
                 self.consume('ITZ')
-                self.parse_expression(var_token)
-
+                value = self.parse_expression(var_token)
+                # Symbol table is already updated in parse_expression when var_token is passed
+                print(f"  ✓ Declared variable: {var_name} with value {value}")
             else:
-                self.variables[var_token] = "NOOB"
+                # No initialization - set to NOOB
+                self.variables[var_token] = 'NOOB'
+                self.symbol_table[var_name] = 'NOOB'
+                print(f"  ✓ Declared variable: {var_name} (default: NOOB)")
         else:
             self.errors.append(f"Expected identifier after I HAS A")
         print()
@@ -167,12 +172,23 @@ class Parser:
         print(f"  ✓ Variable section opened at line {token[3]}")
         line_opened = token[3]
         
-        # Parse variable declarations
+        # Parse variable declarations (and catch invalid statements)
         while self.current_token() and self.current_token()[1] != 'BUHBYE':
             if self.current_token()[1] == 'I HAS A':
                 self.parse_variable_declaration()
             else:
-                self.consume()
+                # Check if this is an invalid assignment in variable section
+                curr = self.current_token()
+                if curr and curr[2] == 'IDENTIFIER' and self.peek() and self.peek()[1] == 'R':
+                    if curr[1] not in self.symbol_table:
+                        self.errors.append(f"Variable '{curr[1]}' is not declared on line {curr[3]}")
+                    # Consume the assignment to continue parsing
+                    self.consume()  # consume identifier
+                    if self.current_token() and self.current_token()[1] == 'R':
+                        self.consume('R')  # consume R
+                        self.parse_expression()  # consume expression
+                else:
+                    self.consume()
         
         token = self.consume('BUHBYE')
         if token:
@@ -181,42 +197,69 @@ class Parser:
         else:
             self.errors.append(f"Missing BUHBYE for WAZZUP at line {line_opened}")
         
-        return True  
-
+        return True
     def parse_expression(self, var_token=None):
         token = self.current_token()
         if not token:
-            return
+            return None
         
         # Literal values
         if token[2] in ['NUMBR', 'NUMBAR', 'YARN', 'TROOF', 'IDENTIFIER']:
-            self.variables[var_token] = token[1]
+            # SEMANTIC CHECK — identifier must exist
+            if token[2] == 'IDENTIFIER' and token[1] not in self.symbol_table:
+                self.errors.append(f"Variable '{token[1]}' undeclared on line {token[3]}")
+                return None
+
+            # Get the value (if it's an identifier, get its value from symbol table)
+            if token[2] == 'IDENTIFIER':
+                value = self.symbol_table.get(token[1], token[1])
+            else:
+                value = token[1]
+
+            # If parsing variable declaration with ITZ
+            if var_token is not None:
+                self.variables[var_token] = value
+                self.symbol_table[var_token[1]] = value
+
             self.consume()
+            return value
 
         # Arithmetic operations
         elif token[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF']:
+            op = token[1]
             self.consume()
-            self.parse_expression()
+            left = self.parse_expression()
             if self.current_token() and self.current_token()[1] == 'AN':
                 self.consume('AN')
-                self.parse_expression()
+                right = self.parse_expression()
+                # Return computed value (simplified - you'd need actual computation)
+                return f"({left} {op} {right})"
+            return left
 
         # Boolean operations
         elif token[1] in ['BOTH OF', 'EITHER OF', 'WON OF']:
+            op = token[1]
             self.consume()
-            self.parse_expression()
+            left = self.parse_expression()
             if self.current_token() and self.current_token()[1] == 'AN':
                 self.consume('AN')
-                self.parse_expression()
+                right = self.parse_expression()
+                return f"({left} {op} {right})"
+            return left
         
         # Comparison
         elif token[1] in ['BOTH SAEM', 'DIFFRINT']:
+            op = token[1]
             self.consume()
-            self.parse_expression()
+            left = self.parse_expression()
             if self.current_token() and self.current_token()[1] == 'AN':
                 self.consume('AN')
-                self.parse_expression()
-    
+                right = self.parse_expression()
+                return f"({left} {op} {right})"
+            return left
+        
+        return None   
+
     def parse_output(self):
         self.consume('VISIBLE')
         self.parse_expression()
@@ -228,11 +271,34 @@ class Parser:
             var = self.consume()
             print(f"  ✓ Input to {var[1]}\n")
 
+    
     def parse_assignment(self):
         var_token = self.consume()
-        self.consume('R')
-        self.parse_expression()
-        print(f"  ✓ Assignment to {var_token[1]}\n")
+        # Check if variable is declared (must exist in symbol_table)
+        if var_token[2] == 'IDENTIFIER' and var_token[1] not in self.symbol_table:
+            self.errors.append(f"Variable '{var_token[1]}' is not declared on line {var_token[3]}")
+            # Still consume the rest to continue parsing
+            if self.current_token() and self.current_token()[1] == 'R':
+                self.consume('R')
+                self.parse_expression()
+        else:
+            # Variable exists, proceed with assignment
+            self.consume('R')
+            value = self.parse_expression()
+
+            if value is not None:
+                # Update both variables dict and symbol_table
+                # Find the var_token in self.variables and update it
+                for var_key in self.variables:
+                    if var_key[1] == var_token[1]:
+                        self.variables[var_key] = value
+                        break
+                
+                # Update symbol table (this is the main one used for lookups)
+                self.symbol_table[var_token[1]] = value
+                print(f"  ✓ Assignment: {var_token[1]} = {value}\n")
+            else:
+                print(f"  ✓ Assignment attempted, but no value was parsed\n")
 
     def parse_typecast(self, cast_type):
         """
@@ -346,15 +412,16 @@ class Parser:
         if token[1] == 'I HAS A':
             self.parse_variable_declaration()
         
-        # FIXED: Check for IS NOW A before R (order matters!)
+        # Check for IS NOW A before R (order matters!)
         elif token[2] == 'IDENTIFIER' and self.peek() and self.peek()[1] == 'IS NOW A':
             self.parse_typecast(2)
         
-        # FIXED: Check if next two tokens are R and MAEK
+        # Check if next two tokens are R and MAEK (typecast type 1)
         elif token[2] == 'IDENTIFIER' and self.peek() and self.peek()[1] == 'R':
             if self.peek(2) and self.peek(2)[1] == 'MAEK':
                 self.parse_typecast(1)
             else:
+                # Regular assignment
                 self.parse_assignment()
         
         elif token[1] == 'VISIBLE':
@@ -367,13 +434,12 @@ class Parser:
             self.parse_switch()
         elif token[1] == 'IM IN YR':
             self.parse_loop()
-        # FIXED: Added function call support
         elif token[1] == 'I IZ':
             self.parse_function_call()
         else:
-            # FIXED: Don't print skip message, just consume
+            # Consume unknown tokens silently
             self.consume()
-
+    
     def parse_function_call(self):
         """
         Parse function call

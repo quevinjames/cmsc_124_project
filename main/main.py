@@ -21,7 +21,7 @@ def run_cli():
     lexer.print_statistics()
 
     print("=============== PARSER HERE ===============")
-    success, parser = parse_lolcode(tokens)
+    success, parser, symbol_table = parse_lolcode(tokens)
     if success:
         print("\n===========================\nParsing success\n===========================\n")
     else:
