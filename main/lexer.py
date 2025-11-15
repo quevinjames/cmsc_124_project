@@ -109,9 +109,6 @@ class Lexer:
         patterns.append((re.compile(r'\bWIN\b'), 'Boolean Value (True)', 'TROOF'))
         patterns.append((re.compile(r'\bFAIL\b'), 'Boolean Value (False)', 'TROOF'))
 
-        # ----------------- String delimiter -----------------
-        patterns.append((re.compile(r'"'), 'String Delimiter', 'STRING_DELIM'))
-
         # ----------------- Operators -----------------
         patterns.append((re.compile(r'\bAN\b'), 'Multiple Parameter Separator', 'OPERATOR'))
 
@@ -179,11 +176,9 @@ class Lexer:
             if line[pos] == '"':
                 if in_string:
                     tokens.append(('String Literal', string_content, 'YARN', final_line_num))
-                    tokens.append(('String Delimiter', '"', 'STRING_DELIM', final_line_num))
                     in_string = False
                     string_content = ""
                 else:
-                    tokens.append(('String Delimiter', '"', 'STRING_DELIM', final_line_num))
                     in_string = True
                 pos += 1
                 continue

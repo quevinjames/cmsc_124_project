@@ -114,6 +114,20 @@ class Parser:
             return self.stack[-1][0]
         return None
 
+
+    def determine_data_type(value):
+        """Helper function to determine data type of a value"""
+        if isinstance(value, str):
+            if value in ('WIN', 'FAIL'):
+                return 'TROOF'
+            elif re.match(r'^-?[0-9]+$', value):
+                return 'NUMBR'
+            elif re.match(r'^-?[0-9]+\.[0-9]+$', value):
+                return 'NUMBAR'
+            else:
+                return 'YARN'
+        return 'NOOB'
+
     # ================================================================
     # ======================= PDA PARSING BODY =======================
     # ================================================================
@@ -218,16 +232,17 @@ class Parser:
             
             if self.current_token() and self.current_token()[1] == 'ITZ':
                 self.consume('ITZ')
-                value = self.parse_expression(var_token)
-                print(f"  ✓ Declared variable: {var_name} with value {value}")
+                value, data_type = self.parse_expression(var_token)
+                self.variables[var_token] = (value, data_type)
+                self.symbol_table[var_name] = (value, data_type)
+                print(f"  ✓ Declared variable: {var_name} with value {value} (type: {data_type})")
             else:
-                self.variables[var_token] = 'NOOB'
-                self.symbol_table[var_name] = 'NOOB'
+                self.variables[var_token] = ('NOOB', 'NOOB')
+                self.symbol_table[var_name] = ('NOOB', 'NOOB')
                 print(f"  ✓ Declared variable: {var_name} (default: NOOB)")
         else:
             self.errors.append(f"Expected identifier after I HAS A")
         print()
-
     # ------------------------------------------------
     # Function: parse_variable_list
     # Description:
@@ -276,61 +291,65 @@ class Parser:
         """================ parse_expression ================"""
         token = self.current_token()
         if not token:
-            return None
+            return (None, None)
         
-        # Literal values
         if token[2] in ['NUMBR', 'NUMBAR', 'YARN', 'TROOF', 'IDENTIFIER']:
             if token[2] == 'IDENTIFIER' and token[1] not in self.symbol_table:
                 self.errors.append(f"Variable '{token[1]}' undeclared on line {token[3]}")
-                return None
+                return (None, None)
 
             if token[2] == 'IDENTIFIER':
-                value = self.symbol_table.get(token[1], token[1])
+                # Get value and type from symbol table
+                stored = self.symbol_table.get(token[1])
+                if isinstance(stored, tuple):
+                    value, data_type = stored
+                else:
+                    value = stored
+                    data_type = determine_data_type(value)
             else:
                 value = token[1]
+                data_type = token[2]  # Use the token's data type directly
 
             if var_token is not None:
-                self.variables[var_token] = value
-                self.symbol_table[var_token[1]] = value
+                self.variables[var_token] = (value, data_type)
+                self.symbol_table[var_token[1]] = (value, data_type)
 
             self.consume()
-            return value
+            return (value, data_type)
 
-        # Arithmetic operations
         elif token[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF']:
             op = token[1]
             self.consume()
-            left = self.parse_expression()
+            left, left_type = self.parse_expression()
             if self.current_token() and self.current_token()[1] == 'AN':
                 self.consume('AN')
-                right = self.parse_expression()
-                return f"({left} {op} {right})"
-            return left
+                right, right_type = self.parse_expression()
+                # Result of arithmetic operations is numeric
+                result_type = 'NUMBAR' if (left_type == 'NUMBAR' or right_type == 'NUMBAR') else 'NUMBR'
+                return (f"({left} {op} {right})", result_type)
+            return (left, left_type)
 
-        # Boolean operations
         elif token[1] in ['BOTH OF', 'EITHER OF', 'WON OF']:
             op = token[1]
             self.consume()
-            left = self.parse_expression()
+            left, _ = self.parse_expression()
             if self.current_token() and self.current_token()[1] == 'AN':
                 self.consume('AN')
-                right = self.parse_expression()
-                return f"({left} {op} {right})"
-            return left
+                right, _ = self.parse_expression()
+                return (f"({left} {op} {right})", 'TROOF')  # Boolean operations return TROOF
+            return (left, 'TROOF')
         
-        # Comparison
         elif token[1] in ['BOTH SAEM', 'DIFFRINT']:
             op = token[1]
             self.consume()
-            left = self.parse_expression()
+            left, _ = self.parse_expression()
             if self.current_token() and self.current_token()[1] == 'AN':
                 self.consume('AN')
-                right = self.parse_expression()
-                return f"({left} {op} {right})"
-            return left
+                right, _ = self.parse_expression()
+                return (f"({left} {op} {right})", 'TROOF')  # Comparison operations return TROOF
+            return (left, 'TROOF')
         
-        return None
-
+        return (None, None)
 
     # ================================================================
     # ======================= STATEMENT PARSING ======================
@@ -435,16 +454,17 @@ class Parser:
                 self.parse_expression()
         else:
             self.consume('R')
-            value = self.parse_expression()
+            value, data_type = self.parse_expression()
             if value is not None:
-                for var_key in self.variables:
+                # Update all matching variable keys
+                for var_key in list(self.variables.keys()):
                     if var_key[1] == var_token[1]:
-                        self.variables[var_key] = value
+                        self.variables[var_key] = (value, data_type)
                         break
-                self.symbol_table[var_token[1]] = value
-                print(f"  ✓ Assignment: {var_token[1]} = {value}\n")
+                self.symbol_table[var_token[1]] = (value, data_type)
+                print(f"  ✓ Assignment: {var_token[1]} = {value} (type: {data_type})\n")
             else:
-                print(f"  ✓ Assignment attempted, but no value was parsed\n")
+                print(f"  ✓ Assignment attempted, but no value was parsed\n") 
 
     # ------------------------------------------------
     # Function: parse_typecast
@@ -717,7 +737,6 @@ class Parser:
             print("\n========== ALL VARIABLES LIST ==========")
             for variable in self.variables:
                 symbol_table[variable[1]] = self.variables[variable]
-                print(f"{variable[1]}:\t {self.variables[variable]}\n")
             print("====================================\n")
             return symbol_table
         else:
@@ -733,6 +752,37 @@ class Parser:
         return [s[0] for s in self.stack] if self.stack else []
 
 
+    
+    # ------------------------------------------------
+    # Function: adjust_dictionary
+    # Description:
+    #     adjust the key value pair of the dict 
+    #     from key = tuple (Type, Literal, Element, Line)
+    #          value = data type
+    #   
+    #     to key = Literal
+    #        value = (data type, element, line)
+    # ------------------------------------------------
+    def adjust_dictionary(self):
+        """================ adjust_dictionary ================"""
+        final_variables = {}
+
+        for var_token in self.variables:
+            stored = self.variables[var_token]
+            
+            # Handle tuple storage (value, data_type)
+            if isinstance(stored, tuple):
+                value, data_type = stored
+            else:
+                # Fallback for old string-only storage
+                value = stored
+                data_type = determine_data_type(value)
+
+            # Store as: variable_name -> (value, token_type, line_num, data_type)
+            final_variables[var_token[1]] = (value, var_token[2], var_token[3], data_type)
+
+        return final_variables
+
 # ================================================================
 # ======================= HELPER FUNCTION ========================
 # ================================================================
@@ -742,5 +792,8 @@ def parse_lolcode(tokens):
     parser = Parser(tokens)
     success = parser.parse()
     parser.print_errors()
-    symbol_table = parser.print_variables()
+    symbol_table = parser.adjust_dictionary()
+    print("Dictionary")
+    for i in symbol_table:
+        print(f"{i} : {symbol_table[i]}\n")
     return success, parser, symbol_table
