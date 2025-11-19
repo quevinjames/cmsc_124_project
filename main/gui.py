@@ -1,10 +1,16 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import os, importlib.util, re
+import os, importlib.util
 
-LEXER_MODULE_NAME = "lexer"
+# Import the parser
+try:
+    from parser import parse_lolcode
+except ImportError:
+    parse_lolcode = None
+    print("Warning: parser.py not found or parse_lolcode missing.")
 
-# --- Import lexer.py ---
+LEXER_MODULE_NAME = "Lexer"
+
 def import_lexer_module():
     path = os.path.join(os.getcwd(), f"{LEXER_MODULE_NAME}.py")
     if not os.path.exists(path):
@@ -20,13 +26,12 @@ def import_lexer_module():
 
 LEXER_MOD = import_lexer_module()
 
-# --- GUI Class ---
 class LOLGui(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("LOLCODE Interpreter")
         self.geometry("1200x750")
-        self.configure(bg="#E9EEF2")  # light gray-blue background
+        self.configure(bg="#E9EEF2")
         self.current_file = None
         self.create_widgets()
 
@@ -62,26 +67,33 @@ class LOLGui(tk.Tk):
         self.source_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         yscroll.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # ---------- MIDDLE COLUMN: Symbol Table ----------
-        # tk.Label(middle, text="Symbol Table", font=("Segoe UI", 11, "bold"),
-        #          bg="#E9EEF2", fg="#1A3340").pack(anchor="w", pady=(0, 3))
-
-        # self.lexeme_list = tk.Listbox(middle, font=("Consolas", 11), height=25,
-        #                               bg="white", fg="black", selectbackground="#BFD7ED")
-        # lex_scroll = ttk.Scrollbar(middle, orient="vertical")
-        # self.lexeme_list.configure()
-        # self.lexeme_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        # lex_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # ---------- RIGHT COLUMN: Lexemmes ----------
-        tk.Label(right, text="Lexemmes", font=("Segoe UI", 11, "bold"),
+        # ---------- MIDDLE COLUMN: Lexemes (Now a Table) ----------
+        tk.Label(middle, text="Lexemes", font=("Segoe UI", 11, "bold"),
                  bg="#E9EEF2", fg="#1A3340").pack(anchor="w", pady=(0, 3))
 
-        self.symbol_table = ttk.Treeview(right, columns=("Lexeme", "Type"), show="headings", height=25)
-        self.symbol_table.heading("Lexeme", text="Lexeme")
-        self.symbol_table.heading("Type", text="Type")
-        self.symbol_table.column("Lexeme", width=160)
-        self.symbol_table.column("Type", width=120)
+        # Changed from Listbox to Treeview
+        self.lexeme_table = ttk.Treeview(middle, columns=("Classification", "Lexeme"), show="headings", height=25)
+        self.lexeme_table.heading("Classification", text="Classification")
+        self.lexeme_table.heading("Lexeme", text="Lexeme")
+        
+        self.lexeme_table.column("Classification", width=150)
+        self.lexeme_table.column("Lexeme", width=150)
+
+        lex_scroll = ttk.Scrollbar(middle, orient="vertical", command=self.lexeme_table.yview)
+        self.lexeme_table.configure(yscrollcommand=lex_scroll.set)
+        
+        self.lexeme_table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        lex_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # ---------- RIGHT COLUMN: Symbol Table ----------
+        tk.Label(right, text="Symbol Table", font=("Segoe UI", 11, "bold"),
+                 bg="#E9EEF2", fg="#1A3340").pack(anchor="w", pady=(0, 3))
+
+        self.symbol_table = ttk.Treeview(right, columns=("Identifier", "Value"), show="headings", height=25)
+        self.symbol_table.heading("Identifier", text="Identifier")
+        self.symbol_table.heading("Value", text="Value")
+        self.symbol_table.column("Identifier", width=160)
+        self.symbol_table.column("Value", width=120)
         self.symbol_table.pack(fill=tk.BOTH, expand=True)
 
         # ---------- BUTTONS ----------
@@ -93,10 +105,10 @@ class LOLGui(tk.Tk):
         clear_btn.pack(side=tk.LEFT, padx=5, pady=5)
 
         # ---------- CONSOLE ----------
-        tk.Label(self, text="Console Output", font=("Segoe UI", 11, "bold"),
+        tk.Label(self, text="Terminal / Console Output", font=("Segoe UI", 11, "bold"),
                  bg="#E9EEF2", fg="#1A3340").pack(anchor="w", padx=10)
         self.console = tk.Text(self, height=10, font=("Consolas", 11),
-                               bg="white", fg="black", relief=tk.SOLID, bd=1)
+                               bg="#2B2B2B", fg="#00FF00", relief=tk.SOLID, bd=1)
         self.console.pack(fill=tk.BOTH, padx=10, pady=(0, 10), expand=True)
 
     # ---------- Functionality ----------
@@ -115,44 +127,77 @@ class LOLGui(tk.Tk):
         if not LEXER_MOD:
             messagebox.showerror("Error", "lexer.py not found.")
             return
+        if not parse_lolcode:
+            messagebox.showerror("Error", "parser.py not found or failed to import.")
+            return
 
         code = self.source_text.get("1.0", tk.END)
-        lexer_class = getattr(LEXER_MOD, "LOLCODELexer", None)
+        lexer_class = getattr(LEXER_MOD, "Lexer", None)
+        
         if not lexer_class:
-            messagebox.showerror("Error", "LOLCODELexer not found in lexer.py")
+            messagebox.showerror("Error", "Lexer not found in lexer.py")
             return
 
         try:
+            # 1. Tokenization
             lexer = lexer_class()
             tokens = lexer.tokenize(code)
             simplified = [(desc, token) for (desc, token, _, _) in tokens]
 
-            # update lexeme list
-            self.lexeme_list.delete(0, tk.END)
+            # Update Lexemes Table
+            for i in self.lexeme_table.get_children():
+                self.lexeme_table.delete(i)
+                
             for desc, token in simplified:
-                self.lexeme_list.insert(tk.END, f"{token}")
+                self.lexeme_table.insert("", tk.END, values=(desc, token))
 
-            # update symbol table
+            # 2. Parsing
+            success, parser_obj, symbol_table_data = parse_lolcode(tokens)
+
+            # Update Symbol Table 
             for i in self.symbol_table.get_children():
                 self.symbol_table.delete(i)
-            for desc, token in simplified:
-                self.symbol_table.insert("", tk.END, values=(token, desc))
+            
+            if symbol_table_data:
+                for identifier, data in symbol_table_data.items():
+                    var_value = str(data[0])
+                    self.symbol_table.insert("", tk.END, values=(identifier, var_value))
 
-            # show in console
+            # Update Terminal Output
             self.console.delete("1.0", tk.END)
+            
+            self.console.insert(tk.END, "--- LEXICAL ANALYSIS ---\n")
             for desc, token in simplified:
                 self.console.insert(tk.END, f"{desc} {token}\n")
-            self.console.insert(tk.END, "\n[Analysis Complete]\n")
+            
+            self.console.insert(tk.END, "\n--- PARSER OUTPUT ---\n")
+            if success:
+                self.console.insert(tk.END, "Parsing Successful!\n")
+                self.console.insert(tk.END, "\n[Analysis Complete]\n")
+            else:
+                self.console.insert(tk.END, "Parsing Failed. Found errors:\n\n")
+                if hasattr(parser_obj, 'errors') and parser_obj.errors:
+                    for error in parser_obj.errors:
+                        self.console.insert(tk.END, f"{error}\n")
+                else:
+                    self.console.insert(tk.END, "Unknown error occurred.\n")
+
         except Exception as e:
             messagebox.showerror("Error", str(e))
+            import traceback
+            traceback.print_exc()
 
     def clear_all(self):
         self.source_text.delete("1.0", tk.END)
-        self.lexeme_list.delete(0, tk.END)
+        for i in self.lexeme_table.get_children():
+            self.lexeme_table.delete(i)
         for i in self.symbol_table.get_children():
             self.symbol_table.delete(i)
         self.console.delete("1.0", tk.END)
 
-if __name__ == "__main__":
+def start_gui():
     app = LOLGui()
     app.mainloop()
+
+if __name__ == "__main__":
+    start_gui()
