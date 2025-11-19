@@ -62,7 +62,7 @@ class LOLGui(tk.Tk):
         self.source_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         yscroll.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # ---------- MIDDLE COLUMN: Lexemes ----------
+        # ---------- MIDDLE COLUMN: Symbol Table ----------
         # tk.Label(middle, text="Symbol Table", font=("Segoe UI", 11, "bold"),
         #          bg="#E9EEF2", fg="#1A3340").pack(anchor="w", pady=(0, 3))
 
@@ -73,7 +73,7 @@ class LOLGui(tk.Tk):
         # self.lexeme_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         # lex_scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # ---------- RIGHT COLUMN: Classification / Symbol Table ----------
+        # ---------- RIGHT COLUMN: Lexemmes ----------
         tk.Label(right, text="Lexemmes", font=("Segoe UI", 11, "bold"),
                  bg="#E9EEF2", fg="#1A3340").pack(anchor="w", pady=(0, 3))
 
