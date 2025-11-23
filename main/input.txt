@@ -1,24 +1,102 @@
-:BTW start of the program
-HAI
 
-I HAS A true ITZ WIN
-I HAS A false ITZ FAIL
-I HAS A str ITZ "WIN"
-I HAS A str2 ITZ "FAIL"
-I HAS A str3 ITZ "1"
-I HAS A str4 ITZ "0"
-I HAS A str5 ITZ "1.0"
-I HAS A str6 ITZ "0.0"
-I HAS A null
-I HAS A int ITZ 0
-I HAS A int2 ITZ 1
-I HAS A float ITZ 0.0
-I HAS A float2 ITZ 1.0
+BTW FULL LOLCODE TEST PROGRAM
+HAI 1.2
 
-BOTH SAEM str2 AN int
+    BTW -------------------------
+    BTW Variables
+    BTW -------------------------
 
+    I HAS A true ITZ WIN
+    I HAS A false ITZ FAIL
+    I HAS A str ITZ "WIN"
+    I HAS A str4 ITZ "0"
+    I HAS A int ITZ 0
+    I HAS A int2 ITZ 1
+    I HAS A float ITZ 0.0
+    I HAS A float2 ITZ 1.0
+    I HAS A counter ITZ 0
+    I HAS A result
+
+    BTW --------------------------------
+    BTW Function Definition: add two numbers
+    BTW --------------------------------
+    HOW IZ I add_nums YR a AN YR b
+        FOUND YR SUM OF a AN b
+    IF U SAY SO
+
+    I IZ add_nums YR 3 AN YR 4
+
+    BTW --------------------------------
+    BTW Function Definition: check truthiness
+    BTW --------------------------------
+    HOW IZ I is_truthy YR x
+        O RLY?
+            YA RLY, BOTH OF x AN WIN
+            FOUND YR WIN
+        NO WAI
+            FOUND YR FAIL
+        OIC
+    IF U SAY SO
+
+    BTW --------------------------------
+    BTW Function Call Examples
+    BTW --------------------------------
+
+    I HAS A sum_result ITZ I IZ add_nums YR int2 AN YR int MKAY
+    I HAS A truth_result ITZ I IZ is_truthy YR str MKAY
+
+    BTW --------------------------------
+    BTW IF-ELSE TEST
+    BTW --------------------------------
+    O RLY?
+        BOTH OF str4 AN true
+        YA RLY
+            BTW This branch checks "0" AND WIN
+        NO WAI
+            BTW "0" likely falsey -> goes here
+    OIC
+
+    BTW --------------------------------
+    BTW SWITCH / CASE
+    BTW --------------------------------
+    WTF? sum_result
+        OMG 0
+            BTW Sum is zero
+            GTFO
+        OMG 1
+            BTW Sum is exactly one
+            GTFO
+        OMGWTF
+            BTW Sum is something else
+    OIC
+
+    BTW --------------------------------
+    BTW LOOP Test
+    BTW --------------------------------
+
+    IM IN YR loop UPPIN YR counter TIL BOTH OF counter AN false
+        BTW This loop runs while counter is truthy.
+        BTW Equivalent to while(counter != 0)
+
+        O RLY?
+            BOTH OF counter AN true
+            YA RLY
+                BTW counter is > 0 so this path
+            NO WAI
+                BTW counter is 0
+        OIC
+
+        I HAS A tmp ITZ SUM OF counter AN 1
+        counter R ITZ tmp
+    IM OUTTA YR loop
+
+    BTW --------------------------------
+    BTW BOOLEAN EXPRESSION TESTS
+    BTW --------------------------------
+
+    BOTH OF str4 AN true        BTW "0" AND WIN
+    BOTH OF int AN float2       BTW 0 AND 1.0
+    BOTH OF int2 AN float       BTW 1 AND 0.0
+    BOTH OF float2 AN str       BTW 1.0 AND "WIN"
 
 KTHXBYE
-
-
-

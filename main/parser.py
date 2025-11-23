@@ -23,6 +23,12 @@ class Parser:
         # Variables and symbol table
         self.variables = {}
         self.symbol_table = {}
+        self.function_line = []
+        self.scope_stack = [{}]  
+        self.current_function_params = []
+        self.function_scopes = {}  
+
+
 
     # ================================================================
     # ======================= TAPE OPERATIONS ========================
@@ -113,6 +119,40 @@ class Parser:
         if self.stack:
             return self.stack[-1][0]
         return None
+
+
+    def push_scope(self):
+        """================ push_scope ================"""
+        self.scope_stack.append({})
+        print(f"  [SCOPE] Pushed new scope (depth: {len(self.scope_stack)})")
+
+    def pop_scope(self):
+        """================ pop_scope ================"""
+        if len(self.scope_stack) > 1:  # Keep global scope
+            self.scope_stack.pop()
+            print(f"  [SCOPE] Popped scope (depth: {len(self.scope_stack)})")
+
+    def add_to_scope(self, var_name, value='NOOB', data_type='NOOB'):
+        """================ add_to_scope ================"""
+        self.scope_stack[-1][var_name] = (value, data_type)
+        # Also add to global symbol_table for compatibility
+        self.symbol_table[var_name] = (value, data_type, None, None)
+
+    def lookup_variable(self, var_name):
+        """================ lookup_variable ================"""
+        # Search from innermost to outermost scope
+        for scope in reversed(self.scope_stack):
+            if var_name in scope:
+                return scope[var_name]
+        return None
+
+    def variable_exists(self, var_name):
+        """================ variable_exists ================"""
+        # Check if variable exists in any scope
+        for scope in reversed(self.scope_stack):
+            if var_name in scope:
+                return True
+        return False
 
 
     def determine_data_type(value):
@@ -233,12 +273,12 @@ class Parser:
             if self.current_token() and self.current_token()[1] == 'ITZ':
                 self.consume('ITZ')
                 value, data_type = self.parse_expression(var_token)
-                self.variables[var_token] = (value, data_type)
-                self.symbol_table[var_name] = (value, data_type)
+                self.variables[var_token] = (value, data_type, None, None)
+                self.symbol_table[var_name] = (value, data_type, None, None)
                 print(f"  ✓ Declared variable: {var_name} with value {value} (type: {data_type})")
             else:
-                self.variables[var_token] = ('NOOB', 'NOOB')
-                self.symbol_table[var_name] = ('NOOB', 'NOOB')
+                self.variables[var_token] = ('NOOB', 'NOOB', None, None)
+                self.symbol_table[var_name] = ('NOOB', 'NOOB', None, None)
                 print(f"  ✓ Declared variable: {var_name} (default: NOOB)")
         else:
             self.errors.append(f"Expected identifier after I HAS A")
@@ -264,7 +304,7 @@ class Parser:
             else:
                 curr = self.current_token()
                 if curr and curr[2] == 'IDENTIFIER' and self.peek() and self.peek()[1] == 'R':
-                    if curr[1] not in self.symbol_table:
+                    if curr[1] not in self.symbol_table and curr[3] not in self.function_line:
                         self.errors.append(f"Variable '{curr[1]}' is not declared on line {curr[3]}")
                     self.consume()  # consume identifier
                     if self.current_token() and self.current_token()[1] == 'R':
@@ -294,15 +334,15 @@ class Parser:
             return (None, None)
         
         if token[2] in ['NUMBR', 'NUMBAR', 'YARN', 'TROOF', 'IDENTIFIER']:
-            if token[2] == 'IDENTIFIER' and token[1] not in self.symbol_table:
-                self.errors.append(f"Variable '{token[1]}' undeclared on line {token[3]}")
-                return (None, None)
+            if token[2] == 'IDENTIFIER' and token[1] not in self.symbol_table and token[3] not in self.function_line:
+                self.errors.append(f"Variable '{token[1]}' undeclared on line {token[3]} {self.function_line}")
+                return (None, None not in self.function_line)
 
             if token[2] == 'IDENTIFIER':
                 # Get value and type from symbol table
                 stored = self.symbol_table.get(token[1])
                 if isinstance(stored, tuple):
-                    value, data_type = stored
+                    value, data_type, _, _ = stored
                 else:
                     value = stored
                     data_type = determine_data_type(value)
@@ -311,8 +351,8 @@ class Parser:
                 data_type = token[2]  # Use the token's data type directly
 
             if var_token is not None:
-                self.variables[var_token] = (value, data_type)
-                self.symbol_table[var_token[1]] = (value, data_type)
+                self.variables[var_token] = (value, data_type, None, None)
+                self.symbol_table[var_token[1]] = (value, data_type, None, None)
 
             self.consume()
             return (value, data_type)
@@ -447,7 +487,7 @@ class Parser:
     def parse_assignment(self):
         """================ parse_assignment ================"""
         var_token = self.consume()
-        if var_token[2] == 'IDENTIFIER' and var_token[1] not in self.symbol_table:
+        if var_token[2] == 'IDENTIFIER' and var_token[1] not in self.symbol_table and var_token[3] not in self.function_line:
             self.errors.append(f"Variable '{var_token[1]}' is not declared on line {var_token[3]}")
             if self.current_token() and self.current_token()[1] == 'R':
                 self.consume('R')
@@ -459,9 +499,9 @@ class Parser:
                 # Update all matching variable keys
                 for var_key in list(self.variables.keys()):
                     if var_key[1] == var_token[1]:
-                        self.variables[var_key] = (value, data_type)
+                        self.variables[var_key] = (value, data_type, None, None)
                         break
-                self.symbol_table[var_token[1]] = (value, data_type)
+                self.symbol_table[var_token[1]] = (value, data_type, None, None)
                 print(f"  ✓ Assignment: {var_token[1]} = {value} (type: {data_type})\n")
             else:
                 print(f"  ✓ Assignment attempted, but no value was parsed\n") 
@@ -520,9 +560,13 @@ class Parser:
         
         func_name_token = self.current_token()
         if func_name_token and func_name_token[2] == 'IDENTIFIER':
+            func_start_line = token[3]
             func_name = func_name_token[1]
             self.consume()
             self.push_stack(f'FUNCTION:{func_name}', token[3])
+            
+            # Push new scope for function
+            self.push_scope()
             print(f"  ✓ Function '{func_name}' declared at line {token[3]}")
             
             params = []
@@ -531,6 +575,8 @@ class Parser:
                 param_token = self.current_token()
                 if param_token and param_token[2] == 'IDENTIFIER':
                     params.append(param_token[1])
+                    # Add parameter to function scope
+                    self.add_to_scope(param_token[1], 'NOOB', 'NOOB')
                     self.consume()
                 while self.current_token() and self.current_token()[1] == 'AN':
                     self.consume('AN')
@@ -539,11 +585,15 @@ class Parser:
                         param_token = self.current_token()
                         if param_token and param_token[2] == 'IDENTIFIER':
                             params.append(param_token[1])
+                            # Add parameter to function scope
+                            self.add_to_scope(param_token[1], 'NOOB', 'NOOB')
                             self.consume()
             
             if params:
                 print(f"    Parameters: {', '.join(params)}")
-            
+
+
+            func_end_line = func_start_line
             while self.current_token() and self.current_token()[1] != 'IF U SAY SO':
                 if self.current_token()[1] == 'FOUND YR':
                     self.consume('FOUND YR')
@@ -551,18 +601,26 @@ class Parser:
                     print(f"    ✓ Return statement")
                 else:
                     self.parse_statement()
+
+            self.function_scopes[func_name] = {
+                'start_line': func_start_line,
+                'end_line': func_end_line,
+                'params': params
+            }
             
             token = self.consume('IF U SAY SO')
             if token:
                 self.pop_stack(f'FUNCTION:{func_name}')
+                # Pop function scope
+                self.pop_scope()
                 print(f"  ✓ Function '{func_name}' closed at line {token[3]}\n")
             else:
                 self.errors.append(f"Missing 'IF U SAY SO' for function '{func_name}'")
+                self.pop_scope()  # Still pop scope even on error
         else:
             self.errors.append(f"Expected function name after HOW IZ I")
         
         return True
-
     # ------------------------------------------------
     # Function: parse_function_call
     # Description:
@@ -572,32 +630,36 @@ class Parser:
         """================ parse_function_call ================"""
         self.consume('I IZ')
         func_name_token = self.current_token()
-        if func_name_token and func_name_token[2] == 'IDENTIFIER':
-            func_name = func_name_token[1]
-            self.consume()
-            print(f"  ✓ Calling function: {func_name}")
-            
-            args = []
-            if self.current_token() and self.current_token()[1] == 'YR':
-                self.consume('YR')
-                self.parse_expression()
-                args.append(1)
-                while self.current_token() and self.current_token()[1] == 'AN':
-                    self.consume('AN')
-                    if self.current_token() and self.current_token()[1] == 'YR':
-                        self.consume('YR')
-                        self.parse_expression()
-                        args.append(1)
-            
-            if self.current_token() and self.current_token()[1] == 'MKAY':
-                self.consume('MKAY')
-            
-            if args:
-                print(f"    with {len(args)} argument(s)\n")
-            else:
-                print()
 
-    # ================================================================
+        if func_name_token[1] not in self.function_scopes:
+            self.errors.append(f"Error: function name {func_name_token[1]} does not exist on line {func_name_token[3]}" )
+            return False
+
+        self.consume()
+
+        args_count = 0
+
+        if self.current_token()[1] == 'YR':
+            args_count+=1
+            self.consume('YR')
+            self.parse_expression()
+
+            while self.current_token()[1] == 'AN':
+                self.consume('AN')
+                if self.current_token()[1] == 'YR':
+                    args_count+=1
+                    self.consume('YR')
+                    self.parse_expression()
+
+        if self.current_token()[1] == 'MKAY':
+            self.consume('MKAY')
+
+        if args_count == len(self.function_scopes[func_name_token[1]]['params']):
+            return True
+
+        else:
+            self.errors.append(f"Error: Invalid number of parameters, expected {len(self.function_scopes[func_name_token[1]]['params'])} but got {args_count} on line {func_name_token[3]}")
+
     # ======================= CONDITIONALS ===========================
     # ================================================================
 
@@ -772,7 +834,7 @@ class Parser:
             
             # Handle tuple storage (value, data_type)
             if isinstance(stored, tuple):
-                value, data_type = stored
+                value, data_type, _, _ = stored
             else:
                 # Fallback for old string-only storage
                 value = stored
@@ -782,6 +844,20 @@ class Parser:
             final_variables[var_token[1]] = (value, var_token[2], var_token[3], data_type)
 
         return final_variables
+
+    def normalize_symbol(self, entry):
+            """Normalize symbol-table entries into a 4-tuple."""
+            if len(entry) == 4:
+                return entry
+
+            if len(entry) == 2:
+                value, dtype = entry
+                return (value, dtype, None, dtype)
+
+            if len(entry) == 1:
+                return (entry[0], None, None, None)
+
+            return (None, None, None, None)
 
 # ================================================================
 # ======================= HELPER FUNCTION ========================
@@ -793,7 +869,26 @@ def parse_lolcode(tokens):
     success = parser.parse()
     parser.print_errors()
     symbol_table = parser.adjust_dictionary()
+    function_dictionary = {}
     print("Dictionary")
     for i in symbol_table:
         print(f"{i} : {symbol_table[i]}\n")
-    return success, parser, symbol_table
+
+        # self.scope_stack = [{}]  
+        # self.current_function_params = []
+        # self.function_scopes = {}  
+
+    print(parser.function_scopes)
+
+    print("\n========== FUNCTION SCOPES ==========")
+    for func_name, func_info in parser.function_scopes.items():
+        # Transform each parameter name into a tuple (param_name, NOOB)
+        function_dictionary[func_name] = [(param, 'NOOB') for param in func_info['params']]
+    print("======================================\n")
+
+    for i in function_dictionary:
+        print(f"{i} : {function_dictionary[i]}\n")
+
+
+
+    return success, parser, symbol_table, function_dictionary

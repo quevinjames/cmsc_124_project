@@ -35,11 +35,11 @@ def run_cli():
 
         # ----------------- Parsing -----------------
     print("=============== PARSER HERE ===============")
-    success, parser, symbol_table = parse_lolcode(tokens)
+    success, parser, symbol_table, function_dictionary = parse_lolcode(tokens)
     if success:
         print("\n===========================\nParsing success\n===========================\n")
 
-        analyze_lolcode(tokens, symbol_table)
+        analyze_lolcode(tokens, symbol_table, function_dictionary)
 
     else:
         print("\n===========================\nParsing failed, check errors above\n===========================\n")
