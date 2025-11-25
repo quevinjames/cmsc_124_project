@@ -1,8 +1,7 @@
 BTW start of the program
 HAI
-
     BTW ===== VARIABLE DECLARATIONS =====
-
+    WAZZUP
     I HAS A str3 ITZ "1"
     I HAS A str4 ITZ "0"
     I HAS A str5 ITZ "1.0"
@@ -21,11 +20,13 @@ HAI
 
     I HAS A str ITZ "WIN"
     I HAS A str2 ITZ "FAIL"
+    BUHBYE
+
+    str3 R "99"
+   
 
     BTW ===== TEST CASES =====
 
-    VISIBLE BOTH SAEM float AN BIGGR OF float AN float2
-   
    
 KTHXBYE
 

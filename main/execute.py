@@ -193,6 +193,31 @@ class Execute(Parser):
         
         return result_val, result_dtype
 
+    def perform_concat_operation(self, operands):
+        """Perform string concatenation on all operands"""
+        result_parts = []
+        
+        for operand in operands:
+            # Get the string value of each operand
+            if operand[2] == 'YARN':
+                result_parts.append(operand[1])
+            elif operand[2] == 'result':
+                # Already evaluated result
+                result_parts.append(str(operand[1]))
+            elif operand[2] == 'IDENTIFIER':
+                value, dtype = self.get_value(operand)
+                result_parts.append(str(value))
+            elif operand[2] in ['NUMBR', 'NUMBAR', 'TROOF']:
+                result_parts.append(str(operand[1]))
+            else:
+                result_parts.append(str(operand[1]))
+        
+        # Concatenate all parts
+        result = ''.join(result_parts)
+        result_dtype = 'YARN'
+        
+        return result, result_dtype
+
     def manage_stack(self):
         """Process stack when we have operator and operands"""
         
@@ -455,9 +480,19 @@ class Execute(Parser):
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
                         outputs.append(str(result[1]))
-
                     else:
                         print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
+
+                # Check for string concatenation
+                elif current[1] == 'SMOOSH':
+                    self.execute_concat_expr()
+                    
+                    if len(self.op_stack) == 1:
+                        result = self.op_stack.pop()
+                        outputs.append(str(result[1]))
+                    else:
+                        print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
+
                 else:
                     # Simple value to print
                     value, dtype = self.get_value(current)
@@ -516,6 +551,28 @@ class Execute(Parser):
 
         elif token[1] in ['BOTH SAEM', 'DIFFRINT']:
             self.execute_comparison_expr()
+            
+            # Keep reducing stack
+            while len(self.op_stack) > 1:
+                if not self.manage_stack():
+                    break
+            
+            if len(self.op_stack) == 1:
+                print(f"Comparison successful: {self.op_stack[0]}")
+                final_result = self.op_stack.pop()
+                return final_result
+            else:
+                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
+        
+        elif token[1] == 'SMOOSH':
+            self.execute_concat_expr()
+            
+            if len(self.op_stack) == 1:
+                print(f"Concatenation successful: {self.op_stack[0]}")
+                final_result = self.op_stack.pop()
+                return final_result
+            else:
+                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
         
         else:
             # Unknown token - consume to avoid infinite loop
@@ -524,7 +581,6 @@ class Execute(Parser):
         # Consume newline if present
         if self.current_token()[2] == 'NEWLINE':
             self.consume()
-
 
     def execute_boolean_expr(self):
         """Execute boolean expression"""
@@ -612,7 +668,7 @@ class Execute(Parser):
         if self.current_token()[1] == '"':
             self.consume()
 
-        self.manage_stack()   
+        self.manage_stack()
 
     def execute_infinite_arity_expr(self):
         """Execute infinite arity boolean expression (ALL OF, ANY OF)"""
@@ -666,6 +722,97 @@ class Execute(Parser):
         
         # Perform the infinite arity operation
         result, result_dtype = self.perform_infinite_arity_operation(operator, operands)
+        
+        # Push result to stack
+        new_token = ('NONE', result, 'result', result_dtype)
+        self.op_stack.append(new_token)
+
+
+    def execute_concat_expr(self):
+        """Execute string concatenation expression (SMOOSH)"""
+        self.consume()  # Consume SMOOSH
+        
+        operands = []
+        
+        # Collect all operands until we hit a token that's not part of the expression
+        while True:
+            current = self.current_token()
+            
+            # Check for end of expression (newline, +, or other statement keywords)
+            if current[2] == 'NEWLINE' or current[1] in ['VISIBLE', 'KTHXBYE', '+']:
+                break
+            
+            # Skip quotes if present
+            if current[1] == '"':
+                self.consume()
+                continue
+            
+            # Skip AN separator
+            if current[1] == 'AN':
+                self.consume()
+                continue
+            
+            # Check for nested arithmetic expressions
+            if current[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF', 'BIGGR OF', 'SMALLR OF']:
+                self.execute_arithmetic_expr()
+                
+                # Reduce the stack to get the result
+                while len(self.op_stack) > 1:
+                    if not self.manage_stack():
+                        break
+                
+                if len(self.op_stack) >= 1:
+                    operands.append(self.op_stack.pop())
+            
+            # Check for nested boolean expressions
+            elif current[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT']:
+                self.execute_boolean_expr()
+                
+                # Reduce the stack to get the result
+                while len(self.op_stack) > 1:
+                    if not self.manage_stack():
+                        break
+                
+                if len(self.op_stack) >= 1:
+                    operands.append(self.op_stack.pop())
+            
+            # Check for infinite arity boolean expressions
+            elif current[1] in ['ALL OF', 'ANY OF']:
+                self.execute_infinite_arity_expr()
+                
+                if len(self.op_stack) >= 1:
+                    operands.append(self.op_stack.pop())
+            
+            # Check for comparison expressions
+            elif current[1] in ['BOTH SAEM', 'DIFFRINT']:
+                self.execute_comparison_expr()
+                
+                # Reduce the stack to get the result
+                while len(self.op_stack) > 1:
+                    if not self.manage_stack():
+                        break
+                
+                if len(self.op_stack) >= 1:
+                    operands.append(self.op_stack.pop())
+            
+            # Check for nested SMOOSH
+            elif current[1] == 'SMOOSH':
+                self.execute_concat_expr()
+                
+                if len(self.op_stack) >= 1:
+                    operands.append(self.op_stack.pop())
+            
+            # Simple operand (literal or identifier)
+            else:
+                operands.append(current)
+                self.consume()
+            
+            # Skip quotes if present
+            if self.current_token()[1] == '"':
+                self.consume()
+        
+        # Perform the concatenation
+        result, result_dtype = self.perform_concat_operation(operands)
         
         # Push result to stack
         new_token = ('NONE', result, 'result', result_dtype)

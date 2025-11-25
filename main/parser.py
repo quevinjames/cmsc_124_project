@@ -122,6 +122,31 @@ class Parser:
                 return 'YARN'
         return 'NOOB'
 
+    def expect_end_of_statement(self, statement_name, line_num):
+        """
+        Validates that a statement ends properly (NEWLINE or end of tokens).
+        Reports error if unexpected tokens appear after the statement.
+        """
+        token = self.current_token()
+        
+        if not token:
+            return True  # End of file is acceptable
+        
+        if token[2] == 'NEWLINE':
+            return True  # Proper end of statement
+        
+        # Found unexpected token after statement
+        self.errors.append(
+            f"Line {line_num}: Unexpected token '{token[1]}' after {statement_name}"
+        )
+        
+        # Consume all tokens until newline to prevent cascading errors
+        while token and token[2] != 'NEWLINE':
+            self.consume()
+            token = self.current_token()
+        
+        return False
+
 
     def parse(self):
         """================ parse ================"""
@@ -139,6 +164,14 @@ class Parser:
         if not self.parse_program_start():
             return False
 
+        while self.current_token()[2] == "NEWLINE":
+            self.consume()
+
+        if self.current_token()[1] != 'WAZZUP' and ('Variable List Delimiter', 'WAZZUP', 'KEYWORD', 5) in self.tokens:
+            self.errors.append(f"Error: Variable declaration block should be right after the HAI")
+            return False
+
+
         while self.current_token() and self.current_token()[1] != 'KTHXBYE':
             token = self.current_token()
 
@@ -147,9 +180,10 @@ class Parser:
             
             elif token[1] == 'HOW IZ I':
                 self.parse_function()
-            
+
             elif token[1] == 'I HAS A':
-                self.parse_variable_declaration()
+                self.errors.append(f"Error: I HAS A variable declaration must be inside the WAZZUP block on line {token[3]}")
+                return False
             
             else:
                 self.parse_statement()
@@ -194,6 +228,9 @@ class Parser:
         var_token = self.current_token()
         if var_token and var_token[2] == 'IDENTIFIER':
             var_name = var_token[1]
+            if var_name in self.symbol_table:
+                self.errors.append(f"Error: Variable name {var_name} is already taken on line {var_token[3]}")
+                return False
             self.consume()
             
             if self.current_token() and self.current_token()[1] == 'ITZ':
@@ -202,14 +239,21 @@ class Parser:
                 self.variables[var_token] = (value, data_type, None, None)
                 self.symbol_table[var_name] = (value, data_type, None, None)
                 print(f"  ✓ Declared variable: {var_name} with value {value} (type: {data_type})")
+
+
+                self.expect_end_of_statement(f"variable declaration '{var_name}'", {var_token[3]})
             else:
                 self.variables[var_token] = ('NOOB', 'NOOB', None, None)
                 self.symbol_table[var_name] = ('NOOB', 'NOOB', None, None)
                 print(f"  ✓ Declared variable: {var_name} (default: NOOB)")
+
+                
+                self.expect_end_of_statement(f"variable declaration '{var_name}'", {var_token[3]})
         else:
             self.errors.append(f"Expected identifier after I HAS A")
             return False
         print()
+
     def parse_variable_list(self):
         """================ parse_variable_list ================"""
         token = self.consume('WAZZUP')  
@@ -432,10 +476,7 @@ class Parser:
         if not token:
             return
         
-        if token[1] == 'I HAS A':
-            self.parse_variable_declaration()
-        
-        elif token[2] == 'IDENTIFIER' and self.peek() and self.peek()[1] == 'IS NOW A':
+        if token[2] == 'IDENTIFIER' and self.peek() and self.peek()[1] == 'IS NOW A':
             self.parse_typecast(2)
         
         elif token[2] == 'IDENTIFIER' and self.peek() and self.peek()[1] == 'R':
@@ -506,6 +547,8 @@ class Parser:
             expressions.append((expr, expr_type))
         
         print(f"  ✓ Output statement with {len(expressions)} expression(s)\n")
+
+        self.expect_end_of_statement(f"VISIBLE statement line {self.current_token()[3]}", self.current_token()[3])
         return expressions
 
     def parse_input(self):
@@ -514,6 +557,8 @@ class Parser:
         if self.current_token() and self.current_token()[2] == 'IDENTIFIER':
             var = self.consume()
             print(f"  ✓ Input to {var[1]}\n")
+
+            self.expect_end_of_statement(f"GIMMEH statement line: {self.current_token()[3]}", self.current_token()[3])
 
     def parse_assignment(self):
         """================ parse_assignment ================"""
@@ -534,6 +579,8 @@ class Parser:
                         break
                 self.symbol_table[var_token[1]] = (value, data_type, None, None)
                 print(f"  ✓ Assignment: {var_token[1]} = {value} (type: {data_type})\n")
+
+                self.expect_end_of_statement(f"assignment to '{var_token[1]}' line: {var_token[3]}", self.current_token()[3])
             else:
                 print(f"  ✓ Assignment attempted, but no value was parsed\n") 
 
@@ -552,6 +599,8 @@ class Parser:
                 target_type = type_token[1]
                 self.consume()
                 print(f"  ✓ Typecast: {var_token[1]} R MAEK {cast_var[1] if cast_var else '?'} {target_type}")
+
+                self.expect_end_of_statement(f"typecast line: {self.current_token()[3]}", self.current_token()[3])
             else:
                 self.errors.append(f"Line {var_token[3]}: Expected type after MAEK")
                 return False
@@ -563,6 +612,8 @@ class Parser:
                 target_type = type_token[1]
                 self.consume()
                 print(f"  ✓ Typecast: {var_token[1]} IS NOW A {target_type}")
+
+                self.expect_end_of_statement(f"typecast line: {self.current_token()[3]}", self.current_token()[3])
             else:
                 self.errors.append(f"Line {var_token[3]}: Expected type after IS NOW A")
                 return False
@@ -761,7 +812,6 @@ class Parser:
         """================ parse_concat ================"""
         smoosh_token = self.consume('SMOOSH')
         
-        
         # Parse first operand
         if self.current_token() and self.current_token()[1] == '"':
             self.consume('"')
@@ -772,28 +822,42 @@ class Parser:
         # Must have at least one AN keyword (requires at least 2 operands)
         if not self.current_token() or self.current_token()[1] != 'AN':
             self.errors.append(f"Line {smoosh_token[3]}: SMOOSH requires at least 2 operands")
-            return
+            return (None, None)
+        
         # Parse remaining operands (AN operand)+
         while self.current_token() and self.current_token()[1] == 'AN':
-            self.consume('AN')
+            an_token = self.consume('AN')
             
-            # Check if there's actually an operand after AN
-            if not self.current_token() or self.current_token()[1] in ['MKAY', 'KTHXBYE']:
-                self.errors.append(f"Line {smoosh_token[3]}: Expected operand after AN in SMOOSH")
+            # Check if there's actually a valid operand after AN
+            if not self.current_token():
+                self.errors.append(f"Line {an_token[3]}: Expected operand after AN in SMOOSH")
                 return (None, None)
             
+            # Check if next token is a newline, terminator, or end marker (no operand present)
+            next_token_type = self.current_token()[0]  # Access token type (first element)
+            if next_token_type == 'Newline' or self.current_token()[1] in ['MKAY', 'KTHXBYE']:
+                self.errors.append(f"Line {an_token[3]}: Expected operand after AN in SMOOSH")
+                return (None, None)
+            
+            # Parse the operand
             if self.current_token() and self.current_token()[1] == '"':
                 self.consume('"')
             next_val, _ = self.parse_expression()
             if self.current_token() and self.current_token()[1] == '"':
                 self.consume('"')
+            
+            # Check if parse_expression failed
+            if next_val is None:
+                self.errors.append(f"Line {an_token[3]}: Invalid operand after AN in SMOOSH")
+                return (None, None)
         
         # Optional MKAY terminator
         if self.current_token() and self.current_token()[1] == 'MKAY':
             self.consume('MKAY')
         
         print(f"  ✓ String concatenation\n")
-        return 
+        return (None, None)
+
 
     def print_errors(self):
         """================ print_errors ================"""
