@@ -406,16 +406,20 @@ class Execute(Parser):
         
         if self.current_token()[1] == '"':
             self.consume()
-        
+
         # Try to reduce the stack
         self.manage_stack()
 
     def execute(self):
         """Main execute entry point"""
         print("\n================= START EXECUTE HERE =================\n")
-        
+
         while self.current_token()[1] != 'KTHXBYE':
             self.execute_statement()
+
+        for i in self.symbol_table:
+            print(f"{i}: {self.symbol_table[i]}\n")
+
 
     def execute_statement(self):
         """Execute a single statement and advance tokens"""
@@ -508,6 +512,9 @@ class Execute(Parser):
             
             # Print all collected outputs concatenated
             print(f"OUTPUT: {''.join(outputs)}")
+
+        elif token[2] == 'IDENTIFIER' and self.peek()[1] == 'R' and self.peek(2)[1] != 'MAEK':
+            self.execute_reassignment()
         
         elif token[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF', 'BIGGR OF', 'SMALLR OF']:
             self.execute_arithmetic_expr()
@@ -818,8 +825,132 @@ class Execute(Parser):
         new_token = ('NONE', result, 'result', result_dtype)
         self.op_stack.append(new_token)
 
-   
-   
+
+    def execute_reassignment(self):
+        """Execute variable reassignment: <var> R <expr>"""
+        var_token = self.consume()  # Get variable name
+        self.consume()  # Consume 'R'
+        
+        # Check if variable exists in symbol table
+        if var_token[1] not in self.symbol_table:
+            print(f"Error: Variable '{var_token[1]}' not declared")
+            return
+        
+        current = self.current_token()
+        
+        # Handle arithmetic expressions
+        if current[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF', 'BIGGR OF', 'SMALLR OF']:
+            self.execute_arithmetic_expr()
+            
+            # Keep reducing stack until fully reduced
+            while len(self.op_stack) > 1:
+                if not self.manage_stack():
+                    break
+            
+            if len(self.op_stack) == 1:
+                result = self.op_stack.pop()  # ('NONE', value, 'result', dtype)
+                old_entry = self.symbol_table[var_token[1]]
+                self.symbol_table[var_token[1]] = (result[1], old_entry[1], old_entry[2], result[3])
+                print(f"  ✓ Assignment: {var_token[1]} = {result[1]} (type: {result[3]})")
+            else:
+                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
+        
+        # Handle boolean expressions
+        elif current[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT']:
+            self.execute_boolean_expr()
+            
+            while len(self.op_stack) > 1:
+                if not self.manage_stack():
+                    break
+            
+            if len(self.op_stack) == 1:
+                result = self.op_stack.pop()
+                old_entry = self.symbol_table[var_token[1]]
+                self.symbol_table[var_token[1]] = (result[1], old_entry[1], old_entry[2], result[3])
+                print(f"  ✓ Assignment: {var_token[1]} = {result[1]} (type: {result[3]})")
+            else:
+                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
+        
+        # Handle infinite arity boolean expressions
+        elif current[1] in ['ALL OF', 'ANY OF']:
+            self.execute_infinite_arity_expr()
+            
+            if len(self.op_stack) == 1:
+                result = self.op_stack.pop()
+                old_entry = self.symbol_table[var_token[1]]
+                self.symbol_table[var_token[1]] = (result[1], old_entry[1], old_entry[2], result[3])
+                print(f"  ✓ Assignment: {var_token[1]} = {result[1]} (type: {result[3]})")
+            else:
+                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
+        
+        # Handle comparison expressions
+        elif current[1] in ['BOTH SAEM', 'DIFFRINT']:
+            self.execute_comparison_expr()
+            
+            while len(self.op_stack) > 1:
+                if not self.manage_stack():
+                    break
+            
+            if len(self.op_stack) == 1:
+                result = self.op_stack.pop()
+                old_entry = self.symbol_table[var_token[1]]
+                self.symbol_table[var_token[1]] = (result[1], old_entry[1], old_entry[2], result[3])
+                print(f"  ✓ Assignment: {var_token[1]} = {result[1]} (type: {result[3]})")
+            else:
+                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
+        
+        # Handle string concatenation
+        elif current[1] == 'SMOOSH':
+            self.execute_concat_expr()
+            
+            if len(self.op_stack) == 1:
+                result = self.op_stack.pop()
+                old_entry = self.symbol_table[var_token[1]]
+                self.symbol_table[var_token[1]] = (result[1], old_entry[1], old_entry[2], result[3])
+                print(f"  ✓ Assignment: {var_token[1]} = {result[1]} (type: {result[3]})")
+            else:
+                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
+        
+        # Handle variable assignment: <variable> R <variable>
+        elif current[2] == 'IDENTIFIER':
+            if current[1] in self.symbol_table:
+                # Get value from the source variable
+                source_value = self.symbol_table[current[1]][0]
+                source_dtype = self.symbol_table[current[1]][3]
+                
+                old_entry = self.symbol_table[var_token[1]]
+                self.symbol_table[var_token[1]] = (source_value, old_entry[1], old_entry[2], source_dtype)
+                print(f"  ✓ Assignment: {var_token[1]} = {source_value} (from {current[1]}, type: {source_dtype})")
+                self.consume()
+            else:
+                print(f"Error: Variable '{current[1]}' not found in symbol table")
+                self.consume()
+        
+        # Handle literal assignment: <variable> R <literal>
+        elif current[2] in ['NUMBR', 'NUMBAR', 'YARN', 'TROOF']:
+            value = current[1]
+            dtype = current[2]
+            
+            # Convert to proper type
+            if dtype == 'NUMBR':
+                value = int(value)
+            elif dtype == 'NUMBAR':
+                value = float(value)
+            
+            old_entry = self.symbol_table[var_token[1]]
+            self.symbol_table[var_token[1]] = (value, old_entry[1], old_entry[2], dtype)
+            print(f"  ✓ Assignment: {var_token[1]} = {value} (type: {dtype})")
+            self.consume()
+        
+        else:
+            print(f"Error: Unexpected token in assignment: {current}")
+            self.consume()
+        
+        # Consume newline if present
+        if self.current_token() and self.current_token()[2] == 'NEWLINE':
+            self.consume()
+       
+       
 
 def execute_lolcode(tokens, symbol_table, function_dictionary):
     """Entry point for code execution"""

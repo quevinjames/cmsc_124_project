@@ -22,7 +22,9 @@ HAI
     I HAS A str2 ITZ "FAIL"
     BUHBYE
 
-    str3 R "99"
+
+    str3 R SUM OF 6 AN 3
+
    
 
     BTW ===== TEST CASES =====

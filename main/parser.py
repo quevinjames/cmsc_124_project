@@ -571,18 +571,14 @@ class Parser:
             return False
         else:
             self.consume('R')
+            # Only validate the expression syntax, don't evaluate it
             value, data_type = self.parse_expression()
-            if value is not None:
-                for var_key in list(self.variables.keys()):
-                    if var_key[1] == var_token[1]:
-                        self.variables[var_key] = (value, data_type, None, None)
-                        break
-                self.symbol_table[var_token[1]] = (value, data_type, None, None)
-                print(f"  ✓ Assignment: {var_token[1]} = {value} (type: {data_type})\n")
-
-                self.expect_end_of_statement(f"assignment to '{var_token[1]}' line: {var_token[3]}", self.current_token()[3])
-            else:
-                print(f"  ✓ Assignment attempted, but no value was parsed\n") 
+            
+            # Don't store the value yet - let the executor handle it
+            # Just validate that the expression is syntactically correct
+            print(f"  ✓ Assignment syntax valid: {var_token[1]} R <expression>\n")
+            self.expect_end_of_statement(f"assignment to '{var_token[1]}' line: {var_token[3]}", self.current_token()[3])
+            return True
 
     def parse_typecast(self, cast_type):
         """================ parse_typecast ================"""
