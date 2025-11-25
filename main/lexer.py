@@ -23,8 +23,21 @@ class Lexer:
         self.operator_count = 0
         self.other_symbol_count = 0
         
+        # Error collector
+        self.errors = []
+
         # Compile token patterns
         self.patterns = self._create_patterns()
+
+        # Store all keywords for invalid keyword detection
+        self.valid_keywords = set([
+            'I', 'HAS', 'A', 'IS', 'NOW', 'SUM', 'OF', 'DIFF', 'PRODUKT', 'QUOSHUNT', 'MOD',
+            'BIGGR', 'SMALLR', 'BOTH', 'SAEM', 'DIFFRINT', 'EITHER', 'WON', 'ANY', 'ALL',
+            'O', 'RLY?', 'YA', 'RLY', 'NO', 'WAI', 'WTF?', 'IM', 'IN', 'YR', 'OUTTA', 'HOW', 'IZ', 'IF',
+            'U', 'SAY', 'SO', 'FOUND', 'ITZ', 'R', 'NOT', 'SMOOSH', 'VISIBLE', 'GIMMEH',
+            'MEBBE', 'OIC', 'OMG', 'OMGWTF', 'UPPIN', 'NERFIN', 'TIL', 'WILE', 'GTFO', 'MKAY',
+            'HAI', 'KTHXBYE', 'BUHBYE', 'WAZZUP'
+        ])
 
     # ================================================================
     # ======================= PATTERN CREATION =======================
@@ -112,6 +125,10 @@ class Lexer:
         # ----------------- Operators -----------------
         patterns.append((re.compile(r'\bAN\b'), 'Multiple Parameter Separator', 'OPERATOR'))
 
+        # ----------------- VISIBLE seperator -----------------
+        patterns.append((re.compile(r'\+'), 'VISIBLE Separator', 'Separator'))
+
+
         # ----------------- Numbers -----------------
         patterns.append((re.compile(r'-?[0-9]+\.[0-9]+'), 'Float Literal', 'NUMBAR'))
         patterns.append((re.compile(r'-?[0-9]+'), 'Integer Literal', 'NUMBR'))
@@ -162,17 +179,17 @@ class Lexer:
     # ================================================================
     # ======================= TOKENIZATION ==========================
     # ================================================================
-    def tokenize_line(self, line):
+    def tokenize_line(self, raw_line):
         """================ tokenize_line ================"""
         tokens = []
-        pos = 4  # Skip line number prefix
+        line = raw_line
+        pos = 4  # Skip "3 | " prefix
         in_string = False
         string_content = ""
-        final_line_num = int(line[:3].strip())  # Extract line number
+        final_line_num = int(raw_line[:3].strip())
 
         while pos < len(line):
 
-            # Handle string literals
             if line[pos] == '"':
                 if in_string:
                     tokens.append(('String Literal', string_content, 'YARN', final_line_num))
@@ -183,30 +200,66 @@ class Lexer:
                 pos += 1
                 continue
 
-            # Accumulate string content
             if in_string:
                 string_content += line[pos]
                 pos += 1
                 continue
 
-            # Skip whitespace
             if line[pos] in ' \t':
                 pos += 1
                 continue
 
-            # Match token patterns
+            # INVALID IDENTIFIER STARTING WITH NUMBER
+            invalid_identifier_match = re.match(r'-?[0-9]+[A-Za-z_][A-Za-z0-9_]*', line[pos:])
+            if invalid_identifier_match:
+                bad = invalid_identifier_match.group(0)
+                self.errors.append(
+                    f"Invalid identifier '{bad}' at line {final_line_num} "
+                    "(identifiers cannot start with a digit)"
+                )
+                pos += len(bad)
+                continue
+
+            # TRY MATCHING TOKEN PATTERNS
             matched = False
             for regex, description, token_type in self.patterns:
                 match = regex.match(line, pos)
                 if match:
-                    token_text = match.group(0)
-                    tokens.append((description, token_text, token_type, final_line_num))
+                    value = match.group(0)
+
+                    # IDENTIFIER ——> check invalid keyword
+                    if token_type == "IDENTIFIER":
+                        upper = value.upper()
+                        if upper in self.valid_keywords:
+                            # This is a keyword but matched wrongly as identifier
+                            self.errors.append(
+                                f"Invalid use of keyword '{value}' at line {final_line_num}"
+                            )
+                        else:
+                            # Check if identifier looks like a broken keyword
+                            # RULE: if it's ALL CAPS and similar to a keyword, mark as invalid
+                            if value.isupper():
+                                # Compute similarity by prefix length
+                                for kw in self.valid_keywords:
+                                    if kw.startswith(value[0:2]):
+                                        self.errors.append(
+                                            f"Invalid keyword '{value}' at line {final_line_num}"
+                                        )
+                                        break
+
+                    tokens.append((description, value, token_type, final_line_num))
                     pos = match.end()
                     matched = True
                     break
 
+            # INVALID UNKNOWN TOKEN
             if not matched:
-                pos += 1
+                if re.match(r'[A-Za-z]', line[pos]):
+                    bad = re.match(r'[A-Za-z][A-Za-z0-9_]*', line[pos:]).group(0)
+                    self.errors.append(f"Invalid token '{bad}' at line {final_line_num}")
+                    pos += len(bad)
+                else:
+                    pos += 1  # Skip unknown char
 
         return tokens
 
@@ -214,56 +267,69 @@ class Lexer:
     # ======================= TOKEN COUNTERS =========================
     # ================================================================
     def update_counters(self, tokens):
-        """================ update_counters ================"""
-        for token in tokens:
-            token_type = token[2]
-            if token_type in ['KEYWORD', 'TYPE']:
+        for desc, tok, typ, ln in tokens:
+            if typ in ['KEYWORD', 'TYPE']:
                 self.keyword_count += 1
-            elif token_type == 'IDENTIFIER':
+            elif typ == 'IDENTIFIER':
                 self.identifier_count += 1
-            elif token_type == 'NUMBR':
+            elif typ == 'NUMBR':
                 self.numbr_literal_count += 1
-            elif token_type == 'NUMBAR':
+            elif typ == 'NUMBAR':
                 self.numbar_literal_count += 1
-            elif token_type == 'YARN':
+            elif typ == 'YARN':
                 self.yarn_literal_count += 1
-            elif token_type == 'TROOF':
+            elif typ == 'TROOF':
                 self.troof_literal_count += 1
-            elif token_type == 'OPERATOR':
+            elif typ == 'OPERATOR':
                 self.operator_count += 1
-            elif token_type in ['OTHER', 'STRING_DELIM']:
+            elif typ in ['OTHER']:
                 self.other_symbol_count += 1
 
     # ================================================================
     # ======================= MAIN TOKENIZE ==========================
     # ================================================================
     def tokenize(self, text):
-        """================ tokenize ================"""
         text_with_linenum = self.assign_linenum(text)
         final_text = self.remove_comments(text_with_linenum)
         
         all_tokens = []
-        for line in final_text.split('\n'):
-            line = line.strip()
-            if line:
-                tokens = self.tokenize_line(line)
-                all_tokens.extend(tokens)
+        for raw_line in final_text.split('\n'):
+            stripped = raw_line.strip()
+
+            if stripped:
+                line_tokens = self.tokenize_line(raw_line)
+                all_tokens.extend(line_tokens)
+
+            # Add NEWLINE token (parser needs it)
+            line_num = int(raw_line[:3].strip())
+            all_tokens.append(("Newline", "\\n", "NEWLINE", line_num))
 
         self.update_counters(all_tokens)
         return all_tokens
+
+
+# ======================= ERROR HANDLING ==========================
+    def print_errors(self):
+        """Print all lexer errors collected during tokenization"""
+        if not self.errors:
+            print("No lexer errors found.")
+            return
+
+        print("\n========== LEXER ERRORS ==========")
+        for err in self.errors:
+            print(err)
+        print("==================================\n")
 
     # ================================================================
     # ======================= UTILITIES =============================
     # ================================================================
     def print_tokens(self, tokens):
-        """================ print_tokens ================"""
         for description, token, _, line_num in tokens:
             print(f"Line {line_num}: {description} {token}")
 
     def print_statistics(self):
-        """================ print_statistics ================"""
         print("\n===========================================")
-        print(f"\nKeywords: {self.keyword_count}")
+        print(f"Keywords: {self.keyword_count}")
         print(f"Identifiers: {self.identifier_count}")
         print(f"NUMBR Literals: {self.numbr_literal_count}")
         print(f"NUMBAR Literals: {self.numbar_literal_count}")

@@ -11,6 +11,7 @@ or launching the GUI version of the interpreter.
 from lexer import Lexer
 from parser import parse_lolcode
 from semantic import analyze_lolcode
+from execute import execute_lolcode
 import gui  # GUI module
 
 # ================================================================
@@ -26,6 +27,7 @@ def run_cli():
     # ----------------- Tokenization -----------------
     lexer = Lexer()
     tokens = lexer.tokenize(text)
+    lexer.print_errors()
 
     print("====================== All Tokens ======================\n")
     for i in tokens:
@@ -39,7 +41,12 @@ def run_cli():
     if success:
         print("\n===========================\nParsing success\n===========================\n")
 
-        analyze_lolcode(tokens, symbol_table, function_dictionary)
+        semantic_success, semantic_errors = analyze_lolcode(tokens, symbol_table, function_dictionary)
+
+        if semantic_success:
+            print("\n=======================\n Semantic Success\n===========================\n")
+
+            execute_lolcode(tokens, symbol_table, function_dictionary)
 
     else:
         print("\n===========================\nParsing failed, check errors above\n===========================\n")

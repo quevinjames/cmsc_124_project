@@ -234,7 +234,7 @@ class SemanticAnalyzer(Parser):
         op_type = "arithmetic"
         
         # Check first operand
-        if self.current_token()[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF']:
+        if self.current_token()[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF', 'BIGGR OF', 'SMALLR OF']:
             self.analyze_arithmetic_expr()
         else:
             if self.current_token()[1] == '"':
@@ -251,7 +251,7 @@ class SemanticAnalyzer(Parser):
         self.consume('AN')
         
         # Check second operand
-        if self.current_token()[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF']:
+        if self.current_token()[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF', 'BIGGR OF', 'SMALLR OF']:
             self.analyze_arithmetic_expr()
         else:
             if self.current_token()[1] == '"':
@@ -265,9 +265,69 @@ class SemanticAnalyzer(Parser):
             if self.current_token()[1] == '"':
                 self.consume('"')
 
+    
     def analyze_boolean_expr(self):
         boolean_token = self.consume()
+        op = boolean_token[1]
         op_type = 'boolean'
+
+        if op == 'NOT':
+            if self.current_token()[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT', 'ALL OF', 'ANY OF']:
+                self.analyze_boolean_expr()
+                return
+
+            if self.current_token()[1] == '"':
+                self.consume('"')
+
+            if not self.is_valid_operand(op_type, self.current_token(), boolean_token):
+                return
+            
+            self.consume()
+
+            if self.current_token()[1] == '"':
+                self.consume('"')
+
+            return
+
+        if op in ['ALL OF', 'ANY OF']:
+
+            if self.current_token()[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT', 'ALL OF', 'ANY OF']:
+                self.analyze_boolean_expr()
+            else:
+                if self.current_token()[1] == '"':
+                    self.consume('"')
+
+                if not self.is_valid_operand(op_type, self.current_token(), boolean_token):
+                    return
+                
+                self.consume()
+
+                if self.current_token()[1] == '"':
+                    self.consume('"')
+
+            while self.current_token() and self.current_token()[1] == 'AN':
+                self.consume('AN')
+
+                if self.current_token()[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT', 'ALL OF', 'ANY OF']:
+                    self.analyze_boolean_expr()
+                else:
+                    if self.current_token()[1] == '"':
+                        self.consume('"')
+
+                    if not self.is_valid_operand(op_type, self.current_token(), boolean_token):
+                        return
+
+                    self.consume()
+
+                    if self.current_token()[1] == '"':
+                        self.consume('"')
+
+            if not self.current_token() or self.current_token()[1] != 'MKAY':
+                self.errors.append(f"Line {boolean_token[3]}: {op} requires MKAY at the end")
+                return
+            
+            self.consume('MKAY')
+            return
 
         if self.current_token()[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT', 'ALL OF', 'ANY OF']:
             self.analyze_boolean_expr()
@@ -285,7 +345,7 @@ class SemanticAnalyzer(Parser):
 
         self.consume('AN')
 
-        if self.current_token()[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT']:
+        if self.current_token()[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT', 'ALL OF', 'ANY OF']:
             self.analyze_boolean_expr()
         else:
             if self.current_token()[1] == '"':
@@ -298,7 +358,7 @@ class SemanticAnalyzer(Parser):
 
             if self.current_token()[1] == '"':
                 self.consume('"')
-
+    
     def analyze_comparison_expr(self):
         operand_token = self.consume()
         
@@ -323,7 +383,7 @@ class SemanticAnalyzer(Parser):
         
         self.consume('AN')
         
-        if self.current_token()[1] in ['BOTH SAEM', 'DIFFRINT', 'BIGGR OF', 'SMALLR OF']:
+        if self.current_token()[1] in ['BOTH SAEM', 'DIFFRINT', 'BIGGR OF', 'SMALLR OF', 'SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF']:
             self.analyze_comparison_expr()
         else:
             if self.current_token()[1] == '"':
@@ -438,10 +498,10 @@ class SemanticAnalyzer(Parser):
                     return False
 
             elif type == 'boolean':
-                if token[2] == 'NUMBR' and token[1] in ["1","0"]:
+                if token[2] == 'NUMBR' and token[1] in ["1",1,"0",0]:
                     print("TYPECAST BOOLEAN")
                     return True
-                elif token[2] == 'NUMBAR' and token[1] in ["1.0", "0.0"]:
+                elif token[2] == 'NUMBAR' and token[1] in ["1.0",1.0, "0.0",0.0]:
                     print("TYPECAST BOOLEAN")
                     return True
                 elif token[2] == "NOOB":
@@ -466,7 +526,7 @@ def analyze_lolcode(tokens, symbol_table, function_dictionary):
         print("\n=== SEMANTIC ERRORS FOUND ===")
         for error in semantic.errors:
             print(error)
-        return semantic.errors
+        return False, semantic.errors
     else:
         print("\n=== NO SEMANTIC ERRORS ===")
-        return []
+        return True, semantic.errors
