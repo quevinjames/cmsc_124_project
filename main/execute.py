@@ -7,6 +7,7 @@ class Execute(Parser):
         self.symbol_table = symbol_table
         self.function_dictionary = function_dictionary
         self.op_stack = []
+        self.it_var = None
 
     def get_value(self, token):
         """Extract value and datatype from a token"""
@@ -515,6 +516,9 @@ class Execute(Parser):
 
         elif token[2] == 'IDENTIFIER' and self.peek()[1] == 'R' and self.peek(2)[1] != 'MAEK':
             self.execute_reassignment()
+
+        elif token[1] == 'I HAS A':
+            self.execute_declaration()
         
         elif token[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF', 'BIGGR OF', 'SMALLR OF']:
             self.execute_arithmetic_expr()
@@ -825,16 +829,82 @@ class Execute(Parser):
         new_token = ('NONE', result, 'result', result_dtype)
         self.op_stack.append(new_token)
 
+    def execute_declaration(self):
+        self.consume()
+        var_token = self.consume()
+        self.consume()
+
+        current = self.current_token()
+
+        if current[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF', 'BIGGR OF', 'SMALLR OF']:
+            self.execute_arithmetic_expr()
+            
+            # Keep reducing stack until fully reduced
+            while len(self.op_stack) > 1:
+                if not self.manage_stack():
+                    break
+            
+            if len(self.op_stack) == 1:
+                result = self.op_stack.pop()  # ('NONE', value, 'result', dtype)
+                self.symbol_table[var_token[1]] = (result[1], 'IDENTIFIER', var_token[3], result[3])
+            else:
+                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
+        
+        # Handle boolean expressions
+        elif current[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT']:
+            self.execute_boolean_expr()
+            
+            while len(self.op_stack) > 1:
+                if not self.manage_stack():
+                    break
+            
+            if len(self.op_stack) == 1:
+                result = self.op_stack.pop()  # ('NONE', value, 'result', dtype)
+                self.symbol_table[var_token[1]] = (result[1], 'IDENTIFIER', var_token[3], result[3])
+            else:
+                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
+        
+        # Handle infinite arity boolean expressions
+        elif current[1] in ['ALL OF', 'ANY OF']:
+            self.execute_infinite_arity_expr()
+            
+            if len(self.op_stack) == 1:
+                result = self.op_stack.pop()  # ('NONE', value, 'result', dtype)
+                self.symbol_table[var_token[1]] = (result[1], 'IDENTIFIER', var_token[3], result[3])
+            else:
+                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
+        
+        # Handle comparison expressions
+        elif current[1] in ['BOTH SAEM', 'DIFFRINT']:
+            self.execute_comparison_expr()
+            
+            while len(self.op_stack) > 1:
+                if not self.manage_stack():
+                    break
+            
+            if len(self.op_stack) == 1:
+                result = self.op_stack.pop()  # ('NONE', value, 'result', dtype)
+                self.symbol_table[var_token[1]] = (result[1], 'IDENTIFIER', var_token[3], result[3])
+            else:
+                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
+        
+        # Handle string concatenation
+        elif current[1] == 'SMOOSH':
+            self.execute_concat_expr()
+            
+            if len(self.op_stack) == 1:
+                result = self.op_stack.pop()  # ('NONE', value, 'result', dtype)
+                self.symbol_table[var_token[1]] = (result[1], 'IDENTIFIER', var_token[3], result[3])
+            else:
+                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
+
+
+
 
     def execute_reassignment(self):
         """Execute variable reassignment: <var> R <expr>"""
         var_token = self.consume()  # Get variable name
         self.consume()  # Consume 'R'
-        
-        # Check if variable exists in symbol table
-        if var_token[1] not in self.symbol_table:
-            print(f"Error: Variable '{var_token[1]}' not declared")
-            return
         
         current = self.current_token()
         

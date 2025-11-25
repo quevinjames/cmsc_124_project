@@ -2,10 +2,11 @@ BTW start of the program
 HAI
     BTW ===== VARIABLE DECLARATIONS =====
     WAZZUP
+    I HAS A num ITZ SUM OF 6 AN 3
     I HAS A str3 ITZ "1"
     I HAS A str4 ITZ "0"
     I HAS A str5 ITZ "1.0"
-    I HAS A str6 ITZ "0.0"
+    I HAS A str6 ITZ "0.0"  
 
     I HAS A true ITZ WIN
     I HAS A false ITZ FAIL
@@ -23,7 +24,7 @@ HAI
     BUHBYE
 
 
-    str3 R SUM OF 6 AN 3
+
 
    
 
