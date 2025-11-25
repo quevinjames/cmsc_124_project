@@ -23,12 +23,13 @@ HAI
     I HAS A str2 ITZ "FAIL"
     BUHBYE
 
-
-
-
    
-
     BTW ===== TEST CASES =====
+
+    str4 R MAEK int2 TROOF
+
+    MAEK str3 A TROOF
+
 
    
 KTHXBYE

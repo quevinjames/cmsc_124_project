@@ -7,7 +7,7 @@ class Execute(Parser):
         self.symbol_table = symbol_table
         self.function_dictionary = function_dictionary
         self.op_stack = []
-        self.it_var = None
+        self.it_var = []
 
     def get_value(self, token):
         """Extract value and datatype from a token"""
@@ -421,6 +421,8 @@ class Execute(Parser):
         for i in self.symbol_table:
             print(f"{i}: {self.symbol_table[i]}\n")
 
+        print(f"IT : {self.it_var[-1][0]}")
+
 
     def execute_statement(self):
         """Execute a single statement and advance tokens"""
@@ -519,6 +521,16 @@ class Execute(Parser):
 
         elif token[1] == 'I HAS A':
             self.execute_declaration()
+
+        elif token[2] == 'IDENTIFIER' and self.peek()[1] == 'IS NOW A':
+            self.execute_recast(1)
+
+        elif token[2] == 'IDENTIFIER' and self.peek()[1] == 'R' and self.peek(2)[1] == 'MAEK':
+            self.execute_recast(2)
+
+        elif token[1] == 'MAEK':
+            self.execute_recast(3)
+
         
         elif token[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF', 'BIGGR OF', 'SMALLR OF']:
             self.execute_arithmetic_expr()
@@ -1019,8 +1031,189 @@ class Execute(Parser):
         # Consume newline if present
         if self.current_token() and self.current_token()[2] == 'NEWLINE':
             self.consume()
-       
-       
+
+ 
+    def execute_recast(self, type):
+        """Execute type recasting: <variable> IS NOW A <type>"""
+
+        if type == 3:
+            self.consume()
+
+        var_token = self.consume()
+        var_name = var_token[1]
+
+        
+        # Check if variable exists in symbol table
+        if var_name not in self.symbol_table:
+            self.errors.append(f"Error: Variable '{var_name}' not declared")
+            return
+        
+              
+        # Consume 'IS NOW A'
+        if self.current_token()[1] == 'IS NOW A' and type == 1:
+            self.consume()
+
+        elif self.current_token()[1] == 'R' and self.peek()[1] == 'MAEK' and type == 2:
+            self.consume()
+            self.consume()
+            var_assign = self.consume()
+
+        elif self.current_token()[1] == 'A' and type == 3:
+            self.consume()
+
+
+        if type == 1 or type == 3:
+            # Get current variable info
+            current_value, old1, old2, current_type = self.symbol_table[var_name]
+
+        elif type == 2:
+            current_value, old1, old2, current_type = self.symbol_table[var_assign[1]]
+
+
+
+
+        # Get the target type
+        new_type_token = self.current_token()
+        new_type = new_type_token[1]
+        self.consume()
+        
+        new_value = None
+        
+        # ============= NOOB TYPE CASTING =============
+        if current_type == 'NOOB':
+            if new_type == 'TROOF':
+                new_value = 'FAIL'
+            elif new_type == 'NUMBR':
+                new_value = 0
+            elif new_type == 'NUMBAR':
+                new_value = 0.0
+            elif new_type == 'YARN':
+                new_value = ''
+            else:
+                self.errors.append(f"Error: Cannot cast NOOB to {new_type}")
+                return
+        
+        # ============= TROOF TYPE CASTING =============
+        elif current_type == 'TROOF':
+            if new_type == 'NUMBR':
+                # WIN -> 1, FAIL -> 0
+                new_value = 1 if current_value == 'WIN' else 0
+            elif new_type == 'NUMBAR':
+                # WIN -> 1.0, FAIL -> 0.0
+                new_value = 1.0 if current_value == 'WIN' else 0.0
+            elif new_type == 'YARN':
+                # Convert to string
+                new_value = str(current_value)
+            elif new_type == 'TROOF':
+                # Same type, no change
+                new_value = current_value
+            else:
+                self.errors.append(f"Error: Cannot cast TROOF to {new_type}")
+                return
+        
+        # ============= NUMBAR TYPE CASTING =============
+        elif current_type == 'NUMBAR':
+            if new_type == 'NUMBR':
+                # Truncate decimal portion
+                new_value = int(current_value)
+            elif new_type == 'YARN':
+                # Truncate to 2 decimal places
+                new_value = f"{current_value:.2f}"
+            elif new_type == 'TROOF':
+                # 0.0 -> FAIL, others -> WIN
+                new_value = 'FAIL' if current_value == 0.0 else 'WIN'
+            elif new_type == 'NUMBAR':
+                # Same type, no change
+                new_value = current_value
+            else:
+                self.errors.append(f"Error: Cannot cast NUMBAR to {new_type}")
+                return
+        
+        # ============= NUMBR TYPE CASTING =============
+        elif current_type == 'NUMBR':
+            if new_type == 'NUMBAR':
+                # Convert to floating point
+                new_value = float(current_value)
+            elif new_type == 'YARN':
+                # Convert to string
+                new_value = str(current_value)
+            elif new_type == 'TROOF':
+                # 0 -> FAIL, others -> WIN
+                new_value = 'FAIL' if current_value == 0 else 'WIN'
+            elif new_type == 'NUMBR':
+                # Same type, no change
+                new_value = current_value
+            else:
+                self.errors.append(f"Error: Cannot cast NUMBR to {new_type}")
+                return
+        
+        # ============= YARN TYPE CASTING =============
+        elif current_type == 'YARN':
+            if new_type == 'NUMBAR':
+                # Try to convert to float
+                try:
+                    # Check if string contains only valid characters (digits, hyphen, period)
+                    if all(c.isdigit() or c in '.-' for c in str(current_value)):
+                        new_value = float(current_value)
+                    else:
+                        self.errors.append(f"Error: Cannot cast YARN '{current_value}' to NUMBAR - contains non-numerical characters")
+                        return
+                except ValueError:
+                    self.errors.append(f"Error: Cannot cast YARN '{current_value}' to NUMBAR")
+                    return
+            
+            elif new_type == 'NUMBR':
+                # Try to convert to int
+                try:
+                    # Check if string contains only valid characters (digits, hyphen)
+                    if all(c.isdigit() or c == '-' for c in str(current_value)):
+                        new_value = int(float(current_value))  # Convert via float to handle "5.0" -> 5
+                    else:
+                        self.errors.append(f"Error: Cannot cast YARN '{current_value}' to NUMBR - contains non-numerical characters")
+                        return
+                except ValueError:
+                    self.errors.append(f"Error: Cannot cast YARN '{current_value}' to NUMBR")
+                    return
+            
+            elif new_type == 'TROOF':
+                # Empty string or "0" or "0.0" -> FAIL, others -> WIN
+                if current_value in ['', '0', '0.0', 'FAIL', 'NOOB']:
+                    new_value = 'FAIL'
+                else:
+                    new_value = 'WIN'
+            
+            elif new_type == 'YARN':
+                # Same type, no change
+                new_value = current_value
+            
+            else:
+                self.errors.append(f"Error: Cannot cast YARN to {new_type}")
+                return
+        
+        else:
+            self.errors.append(f"Error: Unknown source type {current_type}")
+            return 
+
+        
+        if type == 1:
+            # Update symbol table with new value and type
+            self.symbol_table[var_name] = (new_value, old1, old2, new_type)
+            print(f"  ✓ Recast: {var_name} from {current_type} to {new_type}, value: {new_value}")
+
+        elif type == 2:
+            self.symbol_table[var_name] =  (new_value, old1, old2, new_type)
+            print(f"  ✓ Recast: {var_assign[1]} from {current_type} to {new_type}, value: {new_value}")
+
+        elif type == 3:
+            self.it_var.append((new_value, old1, old2, new_type))
+            print(f"  ✓ Recast: {var_name} from {current_type} to {new_type}, value: {new_value}")
+            print("IT VAR CHANGED")
+
+
+        
+        # Consume newline if present
+        if self.current_token() and self.current_token()[2] == 'NEWLINE':
+            self.consume()
 
 def execute_lolcode(tokens, symbol_table, function_dictionary):
     """Entry point for code execution"""

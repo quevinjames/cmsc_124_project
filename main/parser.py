@@ -583,13 +583,21 @@ class Parser:
     def parse_typecast(self, cast_type):
         """================ parse_typecast ================"""
         var_token = self.consume()
+
+        if var_token[1] not in self.symbol_table:
+            self.errors.append(f"Error: variable {var_token[1]} is not declared on line {var_token[3]}")
+            return False
         
         if cast_type == 1:
             self.consume('R')
             self.consume('MAEK')
             cast_var = self.current_token()
-            if cast_var and cast_var[2] == 'IDENTIFIER':
+            if cast_var and cast_var[2] == 'IDENTIFIER' and cast_var[1] not in self.symbol_table:
+                self.errors.append(f"Error: variable {cast_var[1]} is not declared on line {cast_var[3]}")
+                return False
+            elif cast_var and cast_var[2] == 'IDENTIFIER' and cast_var[1] in self.symbol_table:
                 self.consume()
+
             type_token = self.current_token()
             if type_token and type_token[2] == 'TYPE':
                 target_type = type_token[1]
