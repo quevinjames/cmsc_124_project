@@ -191,6 +191,12 @@ class Parser:
         if not self.parse_program_end():
             self.errors.append(f"Missing closing argument 'KTHXBYE' for opening argument 'HAI' at line {self.tokens[0][3]}")
             return False
+        
+        while self.current_token() and self.current_token()[2] == "NEWLINE":
+            self.consume()
+
+        if self.current_token():
+            self.errors.append(f"Error: Unexpected token {self.current_token()[1]} after KTHXBYE on line {self.current_token()[3]}")
 
         if self.stack:
             print(f"\n[ERROR] Stack not empty at end: {[s[0] for s in self.stack]}")
@@ -493,6 +499,10 @@ class Parser:
         
         elif token[1] == 'O RLY?':
             self.parse_conditional()
+
+        elif token[1] == 'OIC' and 'CONDITIONAL' not in self.stack:
+            self.errors.append(f"Error: Invalid keyword OIC on line {token[3]}, O RLY? not found")
+            self.consume()
         
         elif token[1] == 'WTF?':
             self.parse_switch()
@@ -555,10 +565,18 @@ class Parser:
         """================ parse_input ================"""
         self.consume('GIMMEH')
         if self.current_token() and self.current_token()[2] == 'IDENTIFIER':
+            if self.current_token()[1] not in self.symbol_table:
+                self.errors.append(f"Error: Variable identifier {self.current_token()[1]} does not yet exist on line {self.current_token()[3]}")
+                return False
+
             var = self.consume()
             print(f"  ✓ Input to {var[1]}\n")
-
             self.expect_end_of_statement(f"GIMMEH statement line: {self.current_token()[3]}", self.current_token()[3])
+
+        else:
+            self.errors.append(f"Error: Expecting an identifier after GIMMEH statement on line {self.current_token()[3]}")
+            return False
+
 
     def parse_assignment(self):
         """================ parse_assignment ================"""
@@ -734,24 +752,70 @@ class Parser:
         self.push_stack('CONDITIONAL', token[3])
         print(f"  ✓ Conditional opened at line {token[3]}")
         
-        if self.current_token() and self.current_token()[1] == 'YA RLY':
-            self.consume('YA RLY')
-            self.push_stack('YA_RLY', self.tokens[self.position-1][3])
-            while self.current_token() and self.current_token()[1] not in ['NO WAI', 'MEBBE', 'OIC']:
-                self.parse_statement()
-            self.pop_stack('YA_RLY')
+        # Validate end of O RLY? statement
+        if not self.expect_end_of_statement('O RLY?', token[3]):
+            self.pop_stack('CONDITIONAL')
+            return
         
+        # Consume newline after O RLY?
+        if self.current_token() and self.current_token()[0] == 'Newline':
+            self.position += 1
+        
+        # YA RLY is mandatory
+        if not self.current_token() or self.current_token()[1] != 'YA RLY':
+            self.errors.append(f"Line {token[3]}: Expected YA RLY after O RLY?")
+            self.pop_stack('CONDITIONAL')
+            return
+        
+        ya_rly_token = self.consume('YA RLY')
+        self.push_stack('YA_RLY', ya_rly_token[3])
+        
+        # Validate end of YA RLY statement
+        if not self.expect_end_of_statement('YA RLY', ya_rly_token[3]):
+            self.pop_stack('YA_RLY')
+            self.pop_stack('CONDITIONAL')
+            return
+        
+        # Consume newline after YA RLY
+        if self.current_token() and self.current_token()[0] == 'Newline':
+            self.position += 1
+        
+        # Parse YA RLY block
+        while self.current_token() and self.current_token()[1] not in ['NO WAI', 'OIC']:
+            self.parse_statement()
+        
+        self.pop_stack('YA_RLY')
+        
+        # NO WAI is optional
         if self.current_token() and self.current_token()[1] == 'NO WAI':
-            self.consume('NO WAI')
-            self.push_stack('NO_WAI', self.tokens[self.position-1][3])
+            no_wai_token = self.consume('NO WAI')
+            self.push_stack('NO_WAI', no_wai_token[3])
+            
+            # Validate end of NO WAI statement
+            if not self.expect_end_of_statement('NO WAI', no_wai_token[3]):
+                self.pop_stack('NO_WAI')
+                self.pop_stack('CONDITIONAL')
+                return
+            
+            # Consume newline after NO WAI
+            if self.current_token() and self.current_token()[0] == 'Newline':
+                self.position += 1
+            
+            # Parse NO WAI block
             while self.current_token() and self.current_token()[1] != 'OIC':
                 self.parse_statement()
+            
             self.pop_stack('NO_WAI')
         
-        token = self.consume('OIC')
-        if token:
+        # OIC is mandatory
+        if not self.current_token() or self.current_token()[1] != 'OIC':
+            self.errors.append(f"Line {token[3]}: Expected OIC to close conditional")
             self.pop_stack('CONDITIONAL')
-            print(f"  ✓ Conditional closed at line {token[3]}\n")
+            return
+        
+        oic_token = self.consume('OIC')
+        self.pop_stack('CONDITIONAL')
+        print(f"  ✓ Conditional closed at line {oic_token[3]}\n")
 
 
     def parse_loop(self):

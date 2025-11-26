@@ -418,10 +418,12 @@ class Execute(Parser):
         while self.current_token()[1] != 'KTHXBYE':
             self.execute_statement()
 
+        if len(self.it_var) != 0:
+            print(f"IT : {self.it_var[-1][0]}\n")
+
         for i in self.symbol_table:
             print(f"{i}: {self.symbol_table[i]}\n")
 
-        print(f"IT : {self.it_var[-1][0]}")
 
 
     def execute_statement(self):
@@ -531,6 +533,11 @@ class Execute(Parser):
         elif token[1] == 'MAEK':
             self.execute_recast(3)
 
+        elif token[1] == 'GIMMEH':
+            self.execute_input()
+
+        #elif token[1] == 'O RLY?':
+        #    self.execute_conditional()
         
         elif token[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF', 'BIGGR OF', 'SMALLR OF']:
             self.execute_arithmetic_expr()
@@ -543,6 +550,8 @@ class Execute(Parser):
             if len(self.op_stack) == 1:
                 print(f"Arithmetic successful: {self.op_stack[0]}")
                 final_result = self.op_stack.pop()
+                print(final_result)
+                self.it_var.append((final_result[1], final_result[0], final_result[2], final_result[3]))
                 return final_result
             else:
                 print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
@@ -558,6 +567,7 @@ class Execute(Parser):
             if len(self.op_stack) == 1:
                 print(f"Boolean successful: {self.op_stack[0]}")
                 final_result = self.op_stack.pop()
+                self.it_var.append((final_result[1], final_result[0], final_result[2], final_result[3]))
                 return final_result
             else:
                 print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
@@ -568,6 +578,7 @@ class Execute(Parser):
             if len(self.op_stack) == 1:
                 print(f"Infinite arity boolean successful: {self.op_stack[0]}")
                 final_result = self.op_stack.pop()
+                self.it_var.append((final_result[1], final_result[0], final_result[2], final_result[3]))
                 return final_result
             else:
                 print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
@@ -583,6 +594,7 @@ class Execute(Parser):
             if len(self.op_stack) == 1:
                 print(f"Comparison successful: {self.op_stack[0]}")
                 final_result = self.op_stack.pop()
+                self.it_var.append((final_result[1], final_result[0], final_result[2], final_result[3]))
                 return final_result
             else:
                 print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
@@ -593,6 +605,7 @@ class Execute(Parser):
             if len(self.op_stack) == 1:
                 print(f"Concatenation successful: {self.op_stack[0]}")
                 final_result = self.op_stack.pop()
+                self.it_var.append((final_result[1], final_result[0], final_result[2], final_result[3]))
                 return final_result
             else:
                 print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
@@ -1214,6 +1227,22 @@ class Execute(Parser):
         # Consume newline if present
         if self.current_token() and self.current_token()[2] == 'NEWLINE':
             self.consume()
+
+    def execute_input(self):
+        self.consume()
+
+        var_token = self.consume()
+        var_name = var_token[1]
+
+        current_value, old1, old2, current_type = self.symbol_table[var_name]
+
+        new_value = input()
+
+        self.symbol_table[var_name] = (new_value, old1, old2, 'YARN')
+
+    def execute_conditional(self):
+        pass
+
 
 def execute_lolcode(tokens, symbol_table, function_dictionary):
     """Entry point for code execution"""

@@ -33,7 +33,7 @@ class Lexer:
         self.valid_keywords = set([
             'I', 'HAS', 'A', 'IS', 'NOW', 'SUM', 'OF', 'DIFF', 'PRODUKT', 'QUOSHUNT', 'MOD',
             'BIGGR', 'SMALLR', 'BOTH', 'SAEM', 'DIFFRINT', 'EITHER', 'WON', 'ANY', 'ALL',
-            'O', 'RLY?', 'YA', 'RLY', 'NO', 'WAI', 'WTF?', 'IM', 'IN', 'YR', 'OUTTA', 'HOW', 'IZ', 'IF',
+            'O RLY?', 'YA', 'RLY', 'NO', 'WAI', 'WTF?', 'IM', 'IN', 'YR', 'OUTTA', 'HOW', 'IZ', 'IF',
             'U', 'SAY', 'SO', 'FOUND', 'ITZ', 'R', 'NOT', 'SMOOSH', 'VISIBLE', 'GIMMEH',
             'MEBBE', 'OIC', 'OMG', 'OMGWTF', 'UPPIN', 'NERFIN', 'TIL', 'WILE', 'GTFO', 'MKAY',
             'HAI', 'KTHXBYE', 'BUHBYE', 'WAZZUP'
@@ -45,6 +45,9 @@ class Lexer:
     def _create_patterns(self):
         """================ _create_patterns ================"""
         patterns = []
+        patterns.append((re.compile(r'O RLY\?'), 'Conditional Statement', 'KEYWORD'))
+        patterns.append((re.compile(r'WTF\?'), 'Switch-Case Statement', 'KEYWORD'))
+
 
         # ----------------- Multi-word keywords -----------------
         multi_word = [
@@ -64,10 +67,8 @@ class Lexer:
             ('ALL OF', 'Boolean Operator'),
             ('BOTH SAEM', 'Comparison Operator'),
             ('DIFFRINT', 'Comparison Operator'),
-            (r'O RLY\?', 'Conditional Statement'),
             ('YA RLY', 'Conditional Statement'),
             ('NO WAI', 'Conditional Statement'),
-            (r'WTF\?', 'Switch-Case Statement'),
             ('IM IN YR', 'Loop Statement'),
             ('IM OUTTA YR', 'Loop Statement'),
             ('HOW IZ I', 'Function Declaration'),

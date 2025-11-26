@@ -6,7 +6,8 @@ HAI
     I HAS A str3 ITZ "1"
     I HAS A str4 ITZ "0"
     I HAS A str5 ITZ "1.0"
-    I HAS A str6 ITZ "0.0"  
+    I HAS A str6 ITZ "0.0"
+
 
     I HAS A true ITZ WIN
     I HAS A false ITZ FAIL
@@ -26,11 +27,15 @@ HAI
    
     BTW ===== TEST CASES =====
 
-    str4 R MAEK int2 TROOF
 
-    MAEK str3 A TROOF
+    BOTH SAEM 1 AN int2
+    O RLY?
+      YA RLY
+        VISIBLE "if statement"
+      NO WAI
+        VISIBLE "else statement"
+    OIC
 
-
-   
 KTHXBYE
+
 
