@@ -1374,10 +1374,13 @@ class Execute(Parser):
         if self.current_token() and self.current_token()[1] == 'OIC':
             self.consume()
 
+   
 def execute_lolcode(tokens, symbol_table, function_dictionary):
     """Entry point for code execution"""
     executor = Execute(tokens, symbol_table, function_dictionary)
     executor.execute()
+    new_symbol_table = executor.symbol_table
+    new_function_dictionary = executor.function_dictionary
     
     if executor.errors:
         print("\n=== EXECUTION ERRORS FOUND ===")
@@ -1387,3 +1390,7 @@ def execute_lolcode(tokens, symbol_table, function_dictionary):
     else:
         print("\n=== EXECUTION COMPLETE ===")
         return True, executor.errors
+
+    return new_symbol_table, new_function_dictionary
+
+

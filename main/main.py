@@ -46,7 +46,7 @@ def run_cli():
         if semantic_success:
             print("\n=======================\n Semantic Success\n===========================\n")
 
-            execute_lolcode(tokens, symbol_table, function_dictionary)
+            final_symbol_table, final_function_table = execute_lolcode(tokens, symbol_table, function_dictionary)
 
     else:
         print("\n===========================\nParsing failed, check errors above\n===========================\n")
