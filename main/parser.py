@@ -758,7 +758,7 @@ class Parser:
             return
         
         # Consume newline after O RLY?
-        if self.current_token() and self.current_token()[0] == 'Newline':
+        while self.current_token() and self.current_token()[2] == 'NEWLINE':
             self.position += 1
         
         # YA RLY is mandatory
@@ -777,7 +777,7 @@ class Parser:
             return
         
         # Consume newline after YA RLY
-        if self.current_token() and self.current_token()[0] == 'Newline':
+        while self.current_token() and self.current_token()[2] == 'NEWLINE':
             self.position += 1
         
         # Parse YA RLY block
@@ -798,7 +798,7 @@ class Parser:
                 return
             
             # Consume newline after NO WAI
-            if self.current_token() and self.current_token()[0] == 'Newline':
+            while self.current_token() and self.current_token()[2] == 'NEWLINE':
                 self.position += 1
             
             # Parse NO WAI block
@@ -854,23 +854,70 @@ class Parser:
         self.push_stack('SWITCH', token[3])
         print(f"  ✓ Switch opened at line {token[3]}")
         
+        # Validate end of WTF? statement
+        if not self.expect_end_of_statement('WTF?', token[3]):
+            self.pop_stack('SWITCH')
+            return
+        
+        # Consume all newlines after WTF?
+        while self.current_token() and self.current_token()[2] == 'NEWLINE':
+            self.position += 1
+        
+        # Parse OMG cases
         while self.current_token() and self.current_token()[1] == 'OMG':
-            self.consume('OMG')
+            omg_token = self.consume('OMG')
             self.parse_expression()
+            
+            # Validate end of OMG statement
+            if not self.expect_end_of_statement('OMG', omg_token[3]):
+                self.pop_stack('SWITCH')
+                return
+            
             print(f"    ✓ Case statement")
+            
+            # Consume all newlines after OMG
+            while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                self.position += 1
+            
+            # Parse case block
             while self.current_token() and self.current_token()[1] not in ['OMG', 'OMGWTF', 'OIC']:
                 if self.current_token()[1] == 'GTFO':
-                    self.consume('GTFO')
+                    gtfo_token = self.consume('GTFO')
+                    
+                    # Validate end of GTFO statement
+                    if not self.expect_end_of_statement('GTFO', gtfo_token[3]):
+                        self.pop_stack('SWITCH')
+                        return
+                    
                     print(f"      ✓ Break from case")
+                    
+                    # Consume all newlines after GTFO
+                    while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                        self.position += 1
+                    
                     break
                 self.parse_statement()
         
+        # Parse OMGWTF (default case)
         if self.current_token() and self.current_token()[1] == 'OMGWTF':
-            self.consume('OMGWTF')
+            omgwtf_token = self.consume('OMGWTF')
+            
+            # Validate end of OMGWTF statement
+            if not self.expect_end_of_statement('OMGWTF', omgwtf_token[3]):
+                self.pop_stack('SWITCH')
+                return
+            
             print(f"    ✓ Default case")
+            
+            # Consume all newlines after OMGWTF
+            while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                self.position += 1
+            
+            # Parse default case block
             while self.current_token() and self.current_token()[1] != 'OIC':
                 self.parse_statement()
         
+        # Consume OIC
         token = self.consume('OIC')
         if token:
             self.pop_stack('SWITCH')

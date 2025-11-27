@@ -27,14 +27,16 @@ HAI
    
     BTW ===== TEST CASES =====
 
-
-    BOTH SAEM 1 AN int2
-    O RLY?
-      YA RLY
-        VISIBLE "if statement"
-      NO WAI
-        VISIBLE "else statement"
+    SUM OF 1 AN 6
+    WTF? 
+    OMG 2
+    VISIBLE "CASE 1"
+    OMG 3
+    VISIBLE "CASE 2"
+    OMGWTF
+    VISIBLE "CASE 3"
     OIC
+
 
 KTHXBYE
 
