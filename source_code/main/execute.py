@@ -1400,4 +1400,3 @@ def execute_lolcode(tokens, symbol_table, function_dictionary):
    
     return new_symbol_table, new_function_dictionary, new_errors
 
-

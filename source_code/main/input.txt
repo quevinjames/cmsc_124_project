@@ -1,0 +1,7 @@
+HAI
+WAZZUP
+I HAS A str ITZ "hello"
+BUHBYE
+
+VISIBLE str
+KTHXBY

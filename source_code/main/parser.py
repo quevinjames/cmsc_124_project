@@ -4,6 +4,7 @@ import re
 LOLCODE Parser
 Pushdown Automaton (PDA) inspired parser for syntax analysis
 """
+import re
 
 class Parser:
     """
@@ -12,19 +13,26 @@ class Parser:
 
     def __init__(self, tokens):
         """================ __init__ ================"""
-        self.tokens = tokens                 
-        self.position = 0                     
-        self.stack = []                      
-        self.errors = []         
+        self.tokens = tokens
+        self.position = 0
+        self.stack = []
+        self.errors = []
         self.variables = {}
         self.symbol_table = {}
         self.function_line = []
-        self.scope_stack = [{}]  
+        self.scope_stack = [{}]
         self.current_function_params = []
-        self.function_scopes = {}  
+        self.function_scopes = {}
 
-
-
+    # ---------- New helper to standardize errors ----------
+    def add_error(self, line, message):
+        """Append an error in the standard format."""
+        try:
+            lineno = int(line)
+        except Exception:
+            # fallback if line is None or not int
+            lineno = 0
+        self.errors.append(f"Error on line {lineno}: {message}")
 
     def current_token(self):
         """================ current_token ================"""
@@ -37,11 +45,13 @@ class Parser:
         token = self.current_token()
         if token is None:
             return None
-        
+
         if expected_token and token[1] != expected_token:
-            self.errors.append(f"Line {token[3]}: Expected '{expected_token}', got '{token[1]}'")
+            # use token's line number if available
+            line = token[3] if token and len(token) > 3 else 0
+            self.add_error(line, f"Expected '{expected_token}', got '{token[1]}'")
             return None
-        
+
         self.position += 1
         return token
 
@@ -52,7 +62,6 @@ class Parser:
             return self.tokens[pos]
         return None
 
-
     def push_stack(self, symbol, line_num=0):
         """================ push_stack ================"""
         self.stack.append((symbol, line_num))
@@ -61,16 +70,19 @@ class Parser:
     def pop_stack(self, expected_symbol=None):
         """================ pop_stack ================"""
         if not self.stack:
-            self.errors.append(f"Stack underflow - unmatched closing")
+            # try to use current token line if available
+            ct = self.current_token()
+            line = ct[3] if ct and len(ct) > 3 else 0
+            self.add_error(line, "Stack underflow - unmatched closing")
             return None
-        
+
         symbol, line_num = self.stack.pop()
         print(f"  [POP]  Stack: {[s[0] for s in self.stack] if self.stack else '[]'}")
-        
+
         if expected_symbol and symbol != expected_symbol:
-            self.errors.append(f"Mismatched structure: expected '{expected_symbol}', got '{symbol}' from line {line_num}")
+            self.add_error(line_num, f"Mismatched structure: expected '{expected_symbol}', got '{symbol}'")
             return None
-        
+
         return symbol
 
     def peek_stack(self):
@@ -78,7 +90,6 @@ class Parser:
         if self.stack:
             return self.stack[-1][0]
         return None
-
 
     def push_scope(self):
         """================ push_scope ================"""
@@ -110,7 +121,6 @@ class Parser:
                 return True
         return False
 
-
     def determine_data_type(value):
         """Helper function to determine data type of a value"""
         if isinstance(value, str):
@@ -130,91 +140,95 @@ class Parser:
         Reports error if unexpected tokens appear after the statement.
         """
         token = self.current_token()
-        
+
         if not token:
             return True  # End of file is acceptable
-        
+
         if token[2] == 'NEWLINE':
             return True  # Proper end of statement
-        
+
         # Found unexpected token after statement
-        self.errors.append(
-            f"Line {line_num}: Unexpected token '{token[1]}' after {statement_name}"
-        )
-        
+        ln = line_num if isinstance(line_num, int) else (token[3] if token and len(token) > 3 else 0)
+        self.add_error(ln, f"Unexpected token '{token[1]}' after {statement_name}")
+
         # Consume all tokens until newline to prevent cascading errors
         while token and token[2] != 'NEWLINE':
             self.consume()
             token = self.current_token()
-        
-        return False
 
+        return False
 
     def parse(self):
         """================ parse ================"""
         print("\n================ START PARSING HERE ================\n")
 
         if not self.tokens:
-            self.errors.append("No tokens to parse - empty program")
+            self.add_error(0, "No tokens to parse - empty program")
             return False
 
-        while self.current_token()[2] == "NEWLINE":
+        # skip initial newlines
+        while self.current_token() and self.current_token()[2] == "NEWLINE":
             self.consume()
-
-
 
         if not self.parse_program_start():
             return False
 
-        while self.current_token()[2] == "NEWLINE":
+        while self.current_token() and self.current_token()[2] == "NEWLINE":
             self.consume()
 
-        if self.current_token()[1] != 'WAZZUP' and ('Variable List Delimiter', 'WAZZUP', 'KEYWORD', 5) in self.tokens:
-            self.errors.append(f"Error: Variable declaration block should be right after the HAI")
+        # if WAZZUP exists but not right after HAI, report error at current token line
+        ct = self.current_token()
+        if ct and ct[1] != 'WAZZUP' and ('Variable List Delimiter', 'WAZZUP', 'KEYWORD', 5) in self.tokens:
+            line = ct[3] if len(ct) > 3 else 0
+            self.add_error(line, "Variable declaration block should be right after the HAI")
             return False
-
 
         while self.current_token() and self.current_token()[1] != 'KTHXBYE':
             token = self.current_token()
 
             if token[1] == 'WAZZUP':
                 self.parse_variable_list()
-            
+
             elif token[1] == 'HOW IZ I':
                 self.parse_function()
 
             elif token[1] == 'I HAS A':
-                self.errors.append(f"Error: I HAS A variable declaration must be inside the WAZZUP block on line {token[3]}")
+                line = token[3] if len(token) > 3 else 0
+                self.add_error(line, "I HAS A variable declaration must be inside the WAZZUP block")
                 return False
-            
+
             else:
                 self.parse_statement()
 
         if not self.parse_program_end():
-            self.errors.append(f"Missing closing argument 'KTHXBYE' for opening argument 'HAI' at line {self.tokens[0][3]}")
+            first_line = self.tokens[0][3] if self.tokens and len(self.tokens[0]) > 3 else 0
+            self.add_error(first_line, "Missing closing argument 'KTHXBYE' for opening argument 'HAI'")
             return False
-        
+
         while self.current_token() and self.current_token()[2] == "NEWLINE":
             self.consume()
 
         if self.current_token():
-            self.errors.append(f"Error: Unexpected token {self.current_token()[1]} after KTHXBYE on line {self.current_token()[3]}")
+            ct = self.current_token()
+            ln = ct[3] if len(ct) > 3 else 0
+            self.add_error(ln, f"Unexpected token {ct[1]} after KTHXBYE")
 
         if self.stack:
             print(f"\n[ERROR] Stack not empty at end: {[s[0] for s in self.stack]}")
-            self.errors.append("Unclosed structures remain")
+            ct = self.current_token()
+            ln = ct[3] if ct and len(ct) > 3 else 0
+            self.add_error(ln, "Unclosed structures remain")
             return False
-        
+
         print("\n========== Parse Complete ==========\n")
         return len(self.errors) == 0
-
 
     def parse_program_start(self):
         """================ parse_program_start ================"""
         token = self.consume('HAI')
         if not token:
             return False
-        
+
         self.push_stack('PROGRAM', token[3])
         print(f"  ✓ Program started at line {token[3]}\n")
         return True
@@ -224,23 +238,24 @@ class Parser:
         token = self.consume('KTHXBYE')
         if not token:
             return False
-        
+
         self.pop_stack('PROGRAM')
         print(f"  ✓ Program ended at line {token[3]}\n")
-        return True  
+        return True
 
     def parse_variable_declaration(self):
         """================ parse_variable_declaration ================"""
         self.consume('I HAS A')
-        
+
         var_token = self.current_token()
         if var_token and var_token[2] == 'IDENTIFIER':
             var_name = var_token[1]
             if var_name in self.symbol_table:
-                self.errors.append(f"Error: Variable name {var_name} is already taken on line {var_token[3]}")
+                line = var_token[3] if len(var_token) > 3 else 0
+                self.add_error(line, f"Variable name {var_name} is already taken")
                 return False
             self.consume()
-            
+
             if self.current_token() and self.current_token()[1] == 'ITZ':
                 self.consume('ITZ')
                 value, data_type = self.parse_expression(var_token)
@@ -248,30 +263,33 @@ class Parser:
                 self.symbol_table[var_name] = (value, data_type, None, None)
                 print(f"  ✓ Declared variable: {var_name} with value {value} (type: {data_type})")
 
-
-                self.expect_end_of_statement(f"variable declaration '{var_name}'", {var_token[3]})
+                # expect_end_of_statement accepts a line_num; ensure it's an int
+                ln = var_token[3] if len(var_token) > 3 else 0
+                self.expect_end_of_statement(f"variable declaration '{var_name}'", ln)
             else:
                 self.variables[var_token] = ('NOOB', 'NOOB', None, None)
                 self.symbol_table[var_name] = ('NOOB', 'NOOB', None, None)
                 print(f"  ✓ Declared variable: {var_name} (default: NOOB)")
 
-                
-                self.expect_end_of_statement(f"variable declaration '{var_name}'", {var_token[3]})
+                ln = var_token[3] if len(var_token) > 3 else 0
+                self.expect_end_of_statement(f"variable declaration '{var_name}'", ln)
         else:
-            self.errors.append(f"Expected identifier after I HAS A")
+            ct = self.current_token()
+            ln = ct[3] if ct and len(ct) > 3 else 0
+            self.add_error(ln, "Expected identifier after I HAS A")
             return False
         print()
 
     def parse_variable_list(self):
         """================ parse_variable_list ================"""
-        token = self.consume('WAZZUP')  
-        if not token:  
+        token = self.consume('WAZZUP')
+        if not token:
             return False
-        
+
         self.push_stack('VAR_SECTION', token[3])
         print(f"  ✓ Variable section opened at line {token[3]}")
         line_opened = token[3]
-        
+
         while self.current_token() and self.current_token()[1] != 'BUHBYE':
             if self.current_token()[1] == 'I HAS A':
                 self.parse_variable_declaration()
@@ -286,18 +304,17 @@ class Parser:
                         self.parse_expression()
                 else:
                     self.consume()
-        
+
         token = self.consume('BUHBYE')
         if token:
             self.pop_stack('VAR_SECTION')
             print(f"  ✓ Variable section closed at line {token[3]}\n")
         else:
-            self.errors.append(f"Missing BUHBYE for WAZZUP at line {line_opened}")
+            self.add_error(line_opened, "Missing BUHBYE for WAZZUP")
             return False
-        
+
         return True
 
-    
     def parse_expression(self, var_token=None):
         token = self.current_token()
         if not token:
@@ -306,8 +323,13 @@ class Parser:
         # ===== Literals / Identifiers =====
         if token[2] in ['NUMBR', 'NUMBAR', 'YARN', 'TROOF', 'IDENTIFIER']:
             if token[2] == 'IDENTIFIER' and token[1] not in self.symbol_table:
-                self.errors.append(f"Variable '{token[1]}' undeclared on line {token[3]} {self.function_line}")
-                return (None, None not in self.function_line)
+                ln = token[3] if len(token) > 3 else 0
+                msg = f"Variable '{token[1]}' undeclared"
+                # preserve any function_line info if present (append)
+                if self.function_line:
+                    msg = msg + f" {self.function_line}"
+                self.add_error(ln, msg)
+                return (None, None)
 
             if token[2] == 'IDENTIFIER':
                 stored = self.symbol_table.get(token[1])
@@ -335,26 +357,29 @@ class Parser:
             left, left_type = self.parse_expression()
 
             if not self.current_token() or self.current_token()[1] != 'AN':
-                self.errors.append(f"Line {op_token[3]}: {op} requires AN keyword and second operand")
+                ln = op_token[3] if len(op_token) > 3 else 0
+                self.add_error(ln, f"{op} requires AN keyword and second operand")
                 return (None, None)
 
             self.consume('AN')
-            
+
             if not self.current_token():
-                self.errors.append(f"Line {op_token[3]}: {op} requires second operand after AN")
+                ln = op_token[3] if len(op_token) > 3 else 0
+                self.add_error(ln, f"{op} requires second operand after AN")
                 return (None, None)
-            
+
             right, right_type = self.parse_expression()
-            
+
             if right is None:
-                self.errors.append(f"Line {op_token[3]}: {op} missing second operand")
+                ln = op_token[3] if len(op_token) > 3 else 0
+                self.add_error(ln, f"{op} missing second operand")
                 return (None, None)
-            
+
             result_type = 'NUMBAR' if (left_type == 'NUMBAR' or right_type == 'NUMBAR') else 'NUMBR'
             return (f"({left} {op} {right})", result_type)
 
         # ===== Boolean Ops (fixed) =====
-       
+
         elif token[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT', 'ALL OF', 'ANY OF']:
             op = token[1]
             op_token = token
@@ -366,10 +391,10 @@ class Parser:
             if op == 'NOT':
                 left, _ = self.parse_expression()
                 if left is None:
-                    self.errors.append(f"Line {op_token[3]}: NOT requires one operand")
+                    ln = op_token[3] if len(op_token) > 3 else 0
+                    self.add_error(ln, "NOT requires one operand")
                     return (None, None)
                 return (f"(NOT {left})", 'TROOF')
-
 
             #
             # ===== Variadic Boolean Ops: ALL OF / ANY OF =====
@@ -380,20 +405,23 @@ class Parser:
                 # ---- Parse first operand ----
                 left, _ = self.parse_expression()
                 if left is None:
-                    self.errors.append(f"Line {op_token[3]}: {op} requires operands")
+                    ln = op_token[3] if len(op_token) > 3 else 0
+                    self.add_error(ln, f"{op} requires operands")
                     return (None, None)
                 operands.append(left)
 
                 # ---- Expect AN next ----
                 if not self.current_token() or self.current_token()[1] != 'AN':
-                    self.errors.append(f"Line {op_token[3]}: {op} requires AN between operands")
+                    ln = op_token[3] if len(op_token) > 3 else 0
+                    self.add_error(ln, f"{op} requires AN between operands")
                     return (None, None)
                 self.consume('AN')
 
                 # ---- Parse second operand ----
                 right, _ = self.parse_expression()
                 if right is None:
-                    self.errors.append(f"Line {op_token[3]}: {op} requires second operand")
+                    ln = op_token[3] if len(op_token) > 3 else 0
+                    self.add_error(ln, f"{op} requires second operand")
                     return (None, None)
                 operands.append(right)
 
@@ -405,14 +433,16 @@ class Parser:
                         break
 
                     if not tok or tok[1] != 'AN':
-                        self.errors.append(f"Line {op_token[3]}: {op} expects AN or MKAY")
+                        ln = op_token[3] if len(op_token) > 3 else 0
+                        self.add_error(ln, f"{op} expects AN or MKAY")
                         return (None, None)
 
                     self.consume('AN')
 
                     nxt, _ = self.parse_expression()
                     if nxt is None:
-                        self.errors.append(f"Line {op_token[3]}: {op} missing operand after AN")
+                        ln = op_token[3] if len(op_token) > 3 else 0
+                        self.add_error(ln, f"{op} missing operand after AN")
                         return (None, None)
 
                     operands.append(nxt)
@@ -421,8 +451,6 @@ class Parser:
                 expr = f"({op} " + " ".join(operands) + ")"
                 return (expr, 'TROOF')
 
-
-
             #
             # ===== Binary Boolean Ops: BOTH OF, EITHER OF, WON OF =====
             #
@@ -430,19 +458,22 @@ class Parser:
 
             # require AN
             if not self.current_token() or self.current_token()[1] != 'AN':
-                self.errors.append(f"Line {op_token[3]}: {op} requires AN keyword and second operand")
+                ln = op_token[3] if len(op_token) > 3 else 0
+                self.add_error(ln, f"{op} requires AN keyword and second operand")
                 return (None, None)
 
             self.consume('AN')
 
             if not self.current_token():
-                self.errors.append(f"Line {op_token[3]}: {op} missing second operand")
+                ln = op_token[3] if len(op_token) > 3 else 0
+                self.add_error(ln, f"{op} missing second operand")
                 return (None, None)
 
             right, _ = self.parse_expression()
 
             if right is None:
-                self.errors.append(f"Line {op_token[3]}: {op} missing second operand")
+                ln = op_token[3] if len(op_token) > 3 else 0
+                self.add_error(ln, f"{op} missing second operand")
                 return (None, None)
 
             return (f"({op} {left} {right})", 'TROOF')
@@ -453,23 +484,26 @@ class Parser:
             op_token = token
             self.consume()
             left, _ = self.parse_expression()
-            
+
             if not self.current_token() or self.current_token()[1] != 'AN':
-                self.errors.append(f"Line {op_token[3]}: {op} requires AN keyword and second operand")
+                ln = op_token[3] if len(op_token) > 3 else 0
+                self.add_error(ln, f"{op} requires AN keyword and second operand")
                 return (None, None)
-            
+
             self.consume('AN')
 
             if not self.current_token():
-                self.errors.append(f"Line {op_token[3]}: {op} requires second operand after AN")
+                ln = op_token[3] if len(op_token) > 3 else 0
+                self.add_error(ln, f"{op} requires second operand after AN")
                 return (None, None)
-            
+
             right, _ = self.parse_expression()
-            
+
             if right is None:
-                self.errors.append(f"Line {op_token[3]}: {op} missing second operand")
+                ln = op_token[3] if len(op_token) > 3 else 0
+                self.add_error(ln, f"{op} missing second operand")
                 return (None, None)
-            
+
             return (f"({left} {op} {right})", 'TROOF')
 
         # ===== SMOOSH =====
@@ -483,35 +517,36 @@ class Parser:
         token = self.current_token()
         if not token:
             return
-        
+
         if token[2] == 'IDENTIFIER' and self.peek() and self.peek()[1] == 'IS NOW A':
             self.parse_typecast(2)
-        
+
         elif token[2] == 'IDENTIFIER' and self.peek() and self.peek()[1] == 'R':
             if self.peek(2) and self.peek(2)[1] == 'MAEK':
                 self.parse_typecast(1)
             else:
                 self.parse_assignment()
-        
+
         elif token[1] == 'VISIBLE':
             self.parse_output()
-        
+
         elif token[1] == 'GIMMEH':
             self.parse_input()
-        
+
         elif token[1] == 'O RLY?':
             self.parse_conditional()
 
         elif token[1] == 'OIC' and 'CONDITIONAL' not in self.stack:
-            self.errors.append(f"Error: Invalid keyword OIC on line {token[3]}, O RLY? not found")
+            ln = token[3] if len(token) > 3 else 0
+            self.add_error(ln, "Invalid keyword OIC, O RLY? not found")
             self.consume()
-        
+
         elif token[1] == 'WTF?':
             self.parse_switch()
-        
+
         elif token[1] == 'IM IN YR':
             self.parse_loop()
-        
+
         elif token[1] == 'I IZ':
             self.parse_function_call()
 
@@ -533,58 +568,73 @@ class Parser:
     def parse_output(self):
         """================ parse_output ================"""
         self.consume('VISIBLE')
-        
+
         expressions = []
-        
+
         # Parse first expression
         expr, expr_type = self.parse_expression()
         if expr is not None:
             expressions.append((expr, expr_type))
-        
+
         # Parse additional expressions separated by '+'
         while self.current_token() and self.current_token()[1] == '+':
             plus_token = self.current_token()
             self.consume('+')
-            
+
             # Check if there's an expression after '+'
             if not self.current_token():
-                self.errors.append(f"Line {plus_token[3]}: Expected expression after '+'")
+                ln = plus_token[3] if len(plus_token) > 3 else 0
+                self.add_error(ln, "Expected expression after '+'")
                 return False
-            
+
             expr, expr_type = self.parse_expression()
             if expr is None:
-                self.errors.append(f"Line {plus_token[3]}: Expected expression after '+'")
+                ln = plus_token[3] if len(plus_token) > 3 else 0
+                self.add_error(ln, "Expected expression after '+'")
                 return False
-            
+
             expressions.append((expr, expr_type))
-        
+
         print(f"  ✓ Output statement with {len(expressions)} expression(s)\n")
 
-        self.expect_end_of_statement(f"VISIBLE statement line {self.current_token()[3]}", self.current_token()[3])
+        # If current token exists use its line, else 0
+        ct = self.current_token()
+        ln = ct[3] if ct and len(ct) > 3 else 0
+        self.expect_end_of_statement(f"VISIBLE statement line {ln}", ln)
         return expressions
 
     def parse_input(self):
-        """================ parse_input ================"""
+        """================ parse_input ==============="""
         self.consume('GIMMEH')
-        if self.current_token() and self.current_token()[2] == 'IDENTIFIER':
-            if self.current_token()[1] not in self.symbol_table:
-                self.errors.append(f"Error: Variable identifier {self.current_token()[1]} does not yet exist on line {self.current_token()[3]}")
+        ct = self.current_token()
+        if ct and ct[2] == 'IDENTIFIER':
+            if ct[1] not in self.symbol_table:
+                ln = ct[3] if len(ct) > 3 else 0
+                self.add_error(ln, f"Variable identifier {ct[1]} does not yet exist")
                 return False
 
             var = self.consume()
             print(f"  ✓ Input to {var[1]}\n")
-            self.expect_end_of_statement(f"GIMMEH statement line: {self.current_token()[3]}", self.current_token()[3])
+            ct2 = self.current_token()
+            ln2 = ct2[3] if ct2 and len(ct2) > 3 else 0
+            self.expect_end_of_statement(f"GIMMEH statement line: {ln2}", ln2)
 
         else:
-            self.errors.append(f"Error: Expecting an identifier after GIMMEH statement on line {self.current_token()[3]}")
+            ct = self.current_token()
+            ln = ct[3] if ct and len(ct) > 3 else 0
+            self.add_error(ln, "Expecting an identifier after GIMMEH statement")
             return False
 
-
     def parse_assignment(self):
-        """================ parse_assignment ================"""
+        """================ parse_assignment ==============="""
         var_token = self.consume()
+        if var_token is None:
+            # nothing to do
+            return False
+
         if var_token[2] == 'IDENTIFIER' and var_token[1] not in self.symbol_table and var_token[3] not in self.function_line:
-            self.errors.append(f"Variable '{var_token[1]}' is not declared on line {var_token[3]}")
+            ln = var_token[3] if len(var_token) > 3 else 0
+            self.add_error(ln, f"Variable '{var_token[1]}' is not declared")
             if self.current_token() and self.current_token()[1] == 'R':
                 self.consume('R')
                 self.parse_expression()
@@ -593,27 +643,34 @@ class Parser:
             self.consume('R')
             # Only validate the expression syntax, don't evaluate it
             value, data_type = self.parse_expression()
-            
+
             # Don't store the value yet - let the executor handle it
             # Just validate that the expression is syntactically correct
             print(f"  ✓ Assignment syntax valid: {var_token[1]} R <expression>\n")
-            self.expect_end_of_statement(f"assignment to '{var_token[1]}' line: {var_token[3]}", self.current_token()[3])
+            ct = self.current_token()
+            ln = ct[3] if ct and len(ct) > 3 else 0
+            self.expect_end_of_statement(f"assignment to '{var_token[1]}' line: {var_token[3]}", ln)
             return True
 
     def parse_typecast(self, cast_type):
         """================ parse_typecast ================"""
         var_token = self.consume()
 
-        if var_token[1] not in self.symbol_table:
-            self.errors.append(f"Error: variable {var_token[1]} is not declared on line {var_token[3]}")
+        if var_token is None:
             return False
-        
+
+        if var_token[1] not in self.symbol_table:
+            ln = var_token[3] if len(var_token) > 3 else 0
+            self.add_error(ln, f"variable {var_token[1]} is not declared")
+            return False
+
         if cast_type == 1:
             self.consume('R')
             self.consume('MAEK')
             cast_var = self.current_token()
             if cast_var and cast_var[2] == 'IDENTIFIER' and cast_var[1] not in self.symbol_table:
-                self.errors.append(f"Error: variable {cast_var[1]} is not declared on line {cast_var[3]}")
+                ln = cast_var[3] if len(cast_var) > 3 else 0
+                self.add_error(ln, f"variable {cast_var[1]} is not declared")
                 return False
             elif cast_var and cast_var[2] == 'IDENTIFIER' and cast_var[1] in self.symbol_table:
                 self.consume()
@@ -624,11 +681,14 @@ class Parser:
                 self.consume()
                 print(f"  ✓ Typecast: {var_token[1]} R MAEK {cast_var[1] if cast_var else '?'} {target_type}")
 
-                self.expect_end_of_statement(f"typecast line: {self.current_token()[3]}", self.current_token()[3])
+                ct = self.current_token()
+                ln = ct[3] if ct and len(ct) > 3 else 0
+                self.expect_end_of_statement(f"typecast line: {ln}", ln)
             else:
-                self.errors.append(f"Line {var_token[3]}: Expected type after MAEK")
+                ln = var_token[3] if len(var_token) > 3 else 0
+                self.add_error(ln, "Expected type after MAEK")
                 return False
-        
+
         elif cast_type == 2:
             self.consume('IS NOW A')
             type_token = self.current_token()
@@ -637,30 +697,32 @@ class Parser:
                 self.consume()
                 print(f"  ✓ Typecast: {var_token[1]} IS NOW A {target_type}")
 
-                self.expect_end_of_statement(f"typecast line: {self.current_token()[3]}", self.current_token()[3])
+                ct = self.current_token()
+                ln = ct[3] if ct and len(ct) > 3 else 0
+                self.expect_end_of_statement(f"typecast line: {ln}", ln)
             else:
-                self.errors.append(f"Line {var_token[3]}: Expected type after IS NOW A")
+                ln = var_token[3] if len(var_token) > 3 else 0
+                self.add_error(ln, "Expected type after IS NOW A")
                 return False
-        
-        print()
 
+        print()
 
     def parse_function(self):
         """================ parse_function ================"""
         token = self.consume('HOW IZ I')
         if not token:
             return False
-        
+
         func_name_token = self.current_token()
         if func_name_token and func_name_token[2] == 'IDENTIFIER':
             func_start_line = token[3]
             func_name = func_name_token[1]
             self.consume()
             self.push_stack(f'FUNCTION:{func_name}', token[3])
-            
+
             self.push_scope()
             print(f"  ✓ Function '{func_name}' declared at line {token[3]}")
-            
+
             params = []
             if self.current_token() and self.current_token()[1] == 'YR':
                 self.consume('YR')
@@ -678,10 +740,9 @@ class Parser:
                             params.append(param_token[1])
                             self.add_to_scope(param_token[1], 'NOOB', 'NOOB')
                             self.consume()
-            
+
             if params:
                 print(f"    Parameters: {', '.join(params)}")
-
 
             func_end_line = func_start_line
             while self.current_token() and self.current_token()[1] != 'IF U SAY SO':
@@ -697,128 +758,137 @@ class Parser:
                 'end_line': func_end_line,
                 'params': params
             }
-            
+
             token = self.consume('IF U SAY SO')
             if token:
                 self.pop_stack(f'FUNCTION:{func_name}')
                 self.pop_scope()
                 print(f"  ✓ Function '{func_name}' closed at line {token[3]}\n")
             else:
-                self.errors.append(f"Missing 'IF U SAY SO' for function '{func_name}'")
+                self.add_error(func_start_line, f"Missing 'IF U SAY SO' for function '{func_name}'")
                 self.pop_scope()  # Still pop scope even on error
                 return False
         else:
-            self.errors.append(f"Expected function name after HOW IZ I")
+            ct = self.current_token()
+            ln = ct[3] if ct and len(ct) > 3 else 0
+            self.add_error(ln, "Expected function name after HOW IZ I")
             return False
-        
+
         return True
+
     def parse_function_call(self):
         """================ parse_function_call ================"""
         self.consume('I IZ')
         func_name_token = self.current_token()
 
+        if func_name_token is None:
+            self.add_error(0, "Expected function name after I IZ")
+            return False
+
         if func_name_token[1] not in self.function_scopes:
-            self.errors.append(f"Error: function name {func_name_token[1]} does not exist on line {func_name_token[3]}" )
+            ln = func_name_token[3] if len(func_name_token) > 3 else 0
+            self.add_error(ln, f"function name {func_name_token[1]} does not exist")
             return False
 
         self.consume()
 
         args_count = 0
 
-        if self.current_token()[1] == 'YR':
-            args_count+=1
+        if self.current_token() and self.current_token()[1] == 'YR':
+            args_count += 1
             self.consume('YR')
             self.parse_expression()
 
-            while self.current_token()[1] == 'AN':
+            while self.current_token() and self.current_token()[1] == 'AN':
                 self.consume('AN')
-                if self.current_token()[1] == 'YR':
-                    args_count+=1
+                if self.current_token() and self.current_token()[1] == 'YR':
+                    args_count += 1
                     self.consume('YR')
                     self.parse_expression()
 
-        if self.current_token()[1] == 'MKAY':
+        if self.current_token() and self.current_token()[1] == 'MKAY':
             self.consume('MKAY')
 
-        if args_count == len(self.function_scopes[func_name_token[1]]['params']):
+        expected = len(self.function_scopes[func_name_token[1]]['params'])
+        if args_count == expected:
             return True
-
         else:
-            self.errors.append(f"Error: Invalid number of parameters, expected {len(self.function_scopes[func_name_token[1]]['params'])} but got {args_count} on line {func_name_token[3]}")
+            ln = func_name_token[3] if len(func_name_token) > 3 else 0
+            self.add_error(ln, f"Invalid number of parameters, expected {expected} but got {args_count}")
             return False
-
 
     def parse_conditional(self):
         """================ parse_conditional ================"""
         token = self.consume('O RLY?')
+        if not token:
+            return
         self.push_stack('CONDITIONAL', token[3])
         print(f"  ✓ Conditional opened at line {token[3]}")
-        
+
         # Validate end of O RLY? statement
         if not self.expect_end_of_statement('O RLY?', token[3]):
             self.pop_stack('CONDITIONAL')
             return
-        
+
         # Consume newline after O RLY?
         while self.current_token() and self.current_token()[2] == 'NEWLINE':
             self.position += 1
-        
+
         # YA RLY is mandatory
         if not self.current_token() or self.current_token()[1] != 'YA RLY':
-            self.errors.append(f"Line {token[3]}: Expected YA RLY after O RLY?")
+            self.add_error(token[3], "Expected YA RLY after O RLY?")
             self.pop_stack('CONDITIONAL')
             return
-        
+
         ya_rly_token = self.consume('YA RLY')
         self.push_stack('YA_RLY', ya_rly_token[3])
-        
+
         # Validate end of YA RLY statement
         if not self.expect_end_of_statement('YA RLY', ya_rly_token[3]):
             self.pop_stack('YA_RLY')
             self.pop_stack('CONDITIONAL')
             return
-        
+
         # Consume newline after YA RLY
         while self.current_token() and self.current_token()[2] == 'NEWLINE':
             self.position += 1
-        
+
         # Parse YA RLY block
         while self.current_token() and self.current_token()[1] not in ['NO WAI', 'OIC']:
             self.parse_statement()
-        
+
         self.pop_stack('YA_RLY')
-        
+
         # NO WAI is optional
         if self.current_token() and self.current_token()[1] == 'NO WAI':
             no_wai_token = self.consume('NO WAI')
             self.push_stack('NO_WAI', no_wai_token[3])
-            
+
             # Validate end of NO WAI statement
             if not self.expect_end_of_statement('NO WAI', no_wai_token[3]):
                 self.pop_stack('NO_WAI')
                 self.pop_stack('CONDITIONAL')
                 return
-            
+
             # Consume newline after NO WAI
             while self.current_token() and self.current_token()[2] == 'NEWLINE':
                 self.position += 1
-            
+
             # Parse NO WAI block
             while self.current_token() and self.current_token()[1] != 'OIC':
                 self.parse_statement()
-            
+
             self.pop_stack('NO_WAI')
-        
+
         # OIC is mandatory
         if not self.current_token() or self.current_token()[1] != 'OIC':
-            self.errors.append(f"Line {token[3]}: Expected OIC to close conditional")
+            self.add_error(token[3], "Expected OIC to close conditional")
             self.pop_stack('CONDITIONAL')
             return
-        
+
         oic_token = self.consume('OIC')
         self.pop_stack('CONDITIONAL')
         print(f"  ✓ Conditional closed at line {oic_token[3]}\n")
-
 
     def parse_loop(self):
         """================ parse_loop ================"""
@@ -866,26 +936,6 @@ class Parser:
 
 
             
-            while self.current_token() and self.current_token()[1] != 'IM OUTTA YR':
-                if self.current_token()[1] == 'GTFO':
-                    self.consume('GTFO')
-                    print(f"    ✓ Break statement")
-                    return
-                else:
-                    self.parse_statement()
-            
-            if self.current_token() and self.current_token()[1] == 'IM OUTTA YR':
-                self.consume('IM OUTTA YR')
-                exit_label = self.current_token()
-                if exit_label and exit_label[2] == 'IDENTIFIER':
-                    if exit_label[1] == label:
-                        self.consume()
-                        self.pop_stack(f'LOOP:{label}')
-                        print(f"  ✓ Loop '{label}' closed\n")
-                    else:
-                        self.errors.append(f"Loop label mismatch: '{label}' vs '{exit_label[1]}'")
-                        return False
-
             else:
                 self.errors.append(f"Error: Expecting IM OUTTA YR to close the loop on line")
 
@@ -893,72 +943,74 @@ class Parser:
     def parse_switch(self):
         """================ parse_switch ================"""
         token = self.consume('WTF?')
+        if not token:
+            return
         self.push_stack('SWITCH', token[3])
         print(f"  ✓ Switch opened at line {token[3]}")
-        
+
         # Validate end of WTF? statement
         if not self.expect_end_of_statement('WTF?', token[3]):
             self.pop_stack('SWITCH')
             return
-        
+
         # Consume all newlines after WTF?
         while self.current_token() and self.current_token()[2] == 'NEWLINE':
             self.position += 1
-        
+
         # Parse OMG cases
         while self.current_token() and self.current_token()[1] == 'OMG':
             omg_token = self.consume('OMG')
             self.parse_expression()
-            
+
             # Validate end of OMG statement
             if not self.expect_end_of_statement('OMG', omg_token[3]):
                 self.pop_stack('SWITCH')
                 return
-            
+
             print(f"    ✓ Case statement")
-            
+
             # Consume all newlines after OMG
             while self.current_token() and self.current_token()[2] == 'NEWLINE':
                 self.position += 1
-            
+
             # Parse case block
             while self.current_token() and self.current_token()[1] not in ['OMG', 'OMGWTF', 'OIC']:
                 if self.current_token()[1] == 'GTFO':
                     gtfo_token = self.consume('GTFO')
-                    
+
                     # Validate end of GTFO statement
                     if not self.expect_end_of_statement('GTFO', gtfo_token[3]):
                         self.pop_stack('SWITCH')
                         return
-                    
+
                     print(f"      ✓ Break from case")
-                    
+
                     # Consume all newlines after GTFO
                     while self.current_token() and self.current_token()[2] == 'NEWLINE':
                         self.position += 1
-                    
+
                     break
                 self.parse_statement()
-        
+
         # Parse OMGWTF (default case)
         if self.current_token() and self.current_token()[1] == 'OMGWTF':
             omgwtf_token = self.consume('OMGWTF')
-            
+
             # Validate end of OMGWTF statement
             if not self.expect_end_of_statement('OMGWTF', omgwtf_token[3]):
                 self.pop_stack('SWITCH')
                 return
-            
+
             print(f"    ✓ Default case")
-            
+
             # Consume all newlines after OMGWTF
             while self.current_token() and self.current_token()[2] == 'NEWLINE':
                 self.position += 1
-            
+
             # Parse default case block
             while self.current_token() and self.current_token()[1] != 'OIC':
                 self.parse_statement()
-        
+
         # Consume OIC
         token = self.consume('OIC')
         if token:
@@ -968,53 +1020,56 @@ class Parser:
     def parse_concat(self):
         """================ parse_concat ================"""
         smoosh_token = self.consume('SMOOSH')
-        
+
         # Parse first operand
         if self.current_token() and self.current_token()[1] == '"':
             self.consume('"')
         first_val, _ = self.parse_expression()
         if self.current_token() and self.current_token()[1] == '"':
             self.consume('"')
-        
+
         # Must have at least one AN keyword (requires at least 2 operands)
         if not self.current_token() or self.current_token()[1] != 'AN':
-            self.errors.append(f"Line {smoosh_token[3]}: SMOOSH requires at least 2 operands")
+            ln = smoosh_token[3] if len(smoosh_token) > 3 else 0
+            self.add_error(ln, "SMOOSH requires at least 2 operands")
             return (None, None)
-        
+
         # Parse remaining operands (AN operand)+
         while self.current_token() and self.current_token()[1] == 'AN':
             an_token = self.consume('AN')
-            
+
             # Check if there's actually a valid operand after AN
             if not self.current_token():
-                self.errors.append(f"Line {an_token[3]}: Expected operand after AN in SMOOSH")
+                ln = an_token[3] if len(an_token) > 3 else 0
+                self.add_error(ln, "Expected operand after AN in SMOOSH")
                 return (None, None)
-            
+
             # Check if next token is a newline, terminator, or end marker (no operand present)
             next_token_type = self.current_token()[0]  # Access token type (first element)
-            if next_token_type == 'Newline' or self.current_token()[1] in ['MKAY', 'KTHXBYE']:
-                self.errors.append(f"Line {an_token[3]}: Expected operand after AN in SMOOSH")
+            if next_token_type == 'Newline' or (self.current_token() and self.current_token()[1] in ['MKAY', 'KTHXBYE']):
+                ln = an_token[3] if len(an_token) > 3 else 0
+                self.add_error(ln, "Expected operand after AN in SMOOSH")
                 return (None, None)
-            
+
             # Parse the operand
             if self.current_token() and self.current_token()[1] == '"':
                 self.consume('"')
             next_val, _ = self.parse_expression()
             if self.current_token() and self.current_token()[1] == '"':
                 self.consume('"')
-            
+
             # Check if parse_expression failed
             if next_val is None:
-                self.errors.append(f"Line {an_token[3]}: Invalid operand after AN in SMOOSH")
+                ln = an_token[3] if len(an_token) > 3 else 0
+                self.add_error(ln, "Invalid operand after AN in SMOOSH")
                 return (None, None)
-        
+
         # Optional MKAY terminator
         if self.current_token() and self.current_token()[1] == 'MKAY':
             self.consume('MKAY')
-        
+
         print(f"  ✓ String concatenation\n")
         return (None, None)
-
 
     def print_errors(self):
         """================ print_errors ================"""
@@ -1043,15 +1098,13 @@ class Parser:
         """================ get_stack_state ================"""
         return [s[0] for s in self.stack] if self.stack else []
 
-
-    
     def adjust_dictionary(self):
         """================ adjust_dictionary ================"""
         final_variables = {}
 
         for var_token in self.variables:
             stored = self.variables[var_token]
-            
+
             if isinstance(stored, tuple):
                 value, data_type, _, _ = stored
             else:
@@ -1063,18 +1116,18 @@ class Parser:
         return final_variables
 
     def normalize_symbol(self, entry):
-            """Normalize symbol-table entries into a 4-tuple."""
-            if len(entry) == 4:
-                return entry
+        """Normalize symbol-table entries into a 4-tuple."""
+        if len(entry) == 4:
+            return entry
 
-            if len(entry) == 2:
-                value, dtype = entry
-                return (value, dtype, None, dtype)
+        if len(entry) == 2:
+            value, dtype = entry
+            return (value, dtype, None, dtype)
 
-            if len(entry) == 1:
-                return (entry[0], None, None, None)
+        if len(entry) == 1:
+            return (entry[0], None, None, None)
 
-            return (None, None, None, None)
+        return (None, None, None, None)
 
 
 def parse_lolcode(tokens):
@@ -1088,7 +1141,6 @@ def parse_lolcode(tokens):
     for i in symbol_table:
         print(f"{i} : {symbol_table[i]}\n")
 
-
     print(parser.function_scopes)
 
     print("\n========== FUNCTION SCOPES ==========")
@@ -1098,7 +1150,5 @@ def parse_lolcode(tokens):
 
     for i in function_dictionary:
         print(f"{i} : {function_dictionary[i]}\n")
-
-
 
     return success, parser, symbol_table, function_dictionary
