@@ -30,7 +30,7 @@ class IORedirector(object):
 class LOLGui(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("LOLCODE INTERPRETER")
+        self.title("CAUSE GROUP CMSC 124")
         self.geometry("1350x850") 
         
         # --- MODERN COLOR PALETTE ---
