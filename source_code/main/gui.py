@@ -30,7 +30,7 @@ class IORedirector(object):
 class LOLGui(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("LOLCODE Studio")
+        self.title("LOLCODE INTERPRETER")
         self.geometry("1350x850") # Wide enough for 3 columns
         
         # --- MODERN COLOR PALETTE ---
