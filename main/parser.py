@@ -1,3 +1,5 @@
+import re
+
 """
 LOLCODE Parser
 Pushdown Automaton (PDA) inspired parser for syntax analysis
@@ -827,11 +829,48 @@ class Parser:
             self.consume()
             self.push_stack(f'LOOP:{label}', label_token[3])
             print(f"  ✓ Loop '{label}' opened at line {label_token[3]}")
+
+            if self.current_token()[1] == 'UPPIN' and self.peek()[1] == 'YR':
+                self.consume()
+                self.consume()
+
+            else:
+                self.errors.append(f"Error: Expecting UPPIN YR after identifier in line {self.current_token()[3]}")
+                return False
+
+            if self.current_token()[2] == 'IDENTIFIER':
+                if self.current_token()[1] not in self.symbol_table:
+                    self.errors.append(f"Error: Variable name {self.current_token()[1]} not in symbol table in line {self.current_token()[3]}")
+                    return False
+                self.consume()
+
+            else:
+                self.errors.append(f"Error: Expecing an identifier after UPPIN YR in line{self.current_token()[3]}")
+                return False
+
+            if self.current_token()[1] == 'TIL':
+                self.consume()  
+
+            else:
+                self.errors.append(f"Error: Expecting TILL after identifier in line {self.current_token()[3]}")
+
+            if self.current_token()[1] in ['BOTH SAEM', 'DIFFRINT']:
+                self.parse_expression()
+
+            else:
+                self.errors.append(f"Error: Expecting an expression after TIL in line {self.current_token()[3]}")
+                                    
+
+            while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                self.position += 1
+
+
             
             while self.current_token() and self.current_token()[1] != 'IM OUTTA YR':
                 if self.current_token()[1] == 'GTFO':
                     self.consume('GTFO')
                     print(f"    ✓ Break statement")
+                    return
                 else:
                     self.parse_statement()
             
@@ -846,6 +885,9 @@ class Parser:
                     else:
                         self.errors.append(f"Loop label mismatch: '{label}' vs '{exit_label[1]}'")
                         return False
+
+            else:
+                self.errors.append(f"Error: Expecting IM OUTTA YR to close the loop on line")
 
 
     def parse_switch(self):

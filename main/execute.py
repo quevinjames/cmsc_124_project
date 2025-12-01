@@ -8,6 +8,7 @@ class Execute(Parser):
         self.function_dictionary = function_dictionary
         self.op_stack = []
         self.it_var = []
+        self.outputs = []
 
     def get_value(self, token):
         """Extract value and datatype from a token"""
@@ -450,7 +451,7 @@ class Execute(Parser):
                     
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
-                        outputs.append(str(result[1]))
+                        self.outputs.append(str(result[1]))
                     else:
                         print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
                 
@@ -465,7 +466,7 @@ class Execute(Parser):
                     
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
-                        outputs.append(str(result[1]))
+                        self.outputs.append(str(result[1]))
                     else:
                         print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
                 
@@ -475,7 +476,7 @@ class Execute(Parser):
                     
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
-                        outputs.append(str(result[1]))
+                        self.outputs.append(str(result[1]))
                     else:
                         print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
 
@@ -488,7 +489,7 @@ class Execute(Parser):
 
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
-                        outputs.append(str(result[1]))
+                        self.outputs.append(str(result[1]))
                     else:
                         print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
 
@@ -505,7 +506,7 @@ class Execute(Parser):
                 else:
                     # Simple value to print
                     value, dtype = self.get_value(current)
-                    outputs.append(str(value))
+                    self.outputs.append(str(value))
                     self.consume()
                 
                 # Check if there's a + separator for more expressions
@@ -516,7 +517,7 @@ class Execute(Parser):
                     break  # No more expressions to process
             
             # Print all collected outputs concatenated
-            print(f"OUTPUT: {''.join(outputs)}")
+            print(f"OUTPUT: {''.join(self.outputs)}")
 
         elif token[2] == 'IDENTIFIER' and self.peek()[1] == 'R' and self.peek(2)[1] != 'MAEK':
             self.execute_reassignment()
@@ -1374,6 +1375,18 @@ class Execute(Parser):
         if self.current_token() and self.current_token()[1] == 'OIC':
             self.consume()
 
+    def execute_loop(self):
+        self.consume()
+        temp_label = self.consume()
+        self.consume()
+        self.consume()
+
+        if self.current_token()[1] not self.symbol_table:
+            self.errors.append(f"Error: variable name {self.current_token()[1]} does not yet exist on line {self.current_token()[3]}")
+
+        
+            
+
    
 def execute_lolcode(tokens, symbol_table, function_dictionary):
     """Entry point for code execution"""
@@ -1381,16 +1394,10 @@ def execute_lolcode(tokens, symbol_table, function_dictionary):
     executor.execute()
     new_symbol_table = executor.symbol_table
     new_function_dictionary = executor.function_dictionary
+    new_errors = executor.errors
+    new_outputs = executor.outputs
     
-    if executor.errors:
-        print("\n=== EXECUTION ERRORS FOUND ===")
-        for error in executor.errors:
-            print(error)
-        return False, executor.errors
-    else:
-        print("\n=== EXECUTION COMPLETE ===")
-        return True, executor.errors
-
-    return new_symbol_table, new_function_dictionary
+   
+    return new_symbol_table, new_function_dictionary, new_errors
 
 
