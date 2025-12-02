@@ -3,16 +3,15 @@
 **Group Name:** Cause <br/>
 **Section:** ST-6L <br/>
 **Members:** <br/>
- Quevin James Custodio
+ Quevin James Custodio<br/>
  Fernando IV Eugene Castro <br/>
 
-**Contributions:**
-Quevin James Custodio
+**Contributions:**<br/>
+**Quevin James Custodio**
  - made the lexer.py, parser.py, semantic.py and execute.py
  - helped in getting resources from online sources 
- - he facilitated the project
-
-Fernando IV Eugene Castro
+ - he facilitated the project *<br/>
+**Fernando IV Eugene Castro**
  - made the gui.py
  - fixed the error format for the lexer.py, parser.py, and semantic.py
  - made the README.md file
@@ -77,3 +76,4 @@ Key Features: <br/>
 ## Note to Instructor:
 
 See the various branches in this repository to see the significant commits of other members of this group project. Thanks!
+
