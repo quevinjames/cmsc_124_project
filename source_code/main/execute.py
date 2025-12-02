@@ -542,6 +542,18 @@ class Execute(Parser):
         elif token[2] == 'IDENTIFIER' and self.peek()[1] == 'R' and self.peek(2)[1] != 'MAEK':
             self.execute_reassignment()
 
+        elif token[2] == 'IDENTIFIER' and self.peek()[1] == 'IS NOW A':
+            self.execute_recast(1)
+        
+        elif token[2] in ['IDENTIFIER', 'NUMBR', 'NUMBAR', 'YARN', 'TROOF']:
+            value, dtype = self.get_value(token)
+            self.it_var = value  # IMPORTANT: Update IT variable
+            self.consume()
+        # ----------------------
+
+        elif token[1] == 'MAEK':
+            self.execute_recast(3)
+
         elif token[1] == 'I HAS A':
             self.execute_declaration()
 
