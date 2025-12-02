@@ -1,4 +1,5 @@
 from parser import Parser
+import re
 
 class Execute(Parser):
     def __init__(self, tokens, symbol_table, function_dictionary):
@@ -15,12 +16,55 @@ class Execute(Parser):
         if token[2] == 'IDENTIFIER':
             value = self.symbol_table[token[1]][0]
             dtype = self.symbol_table[token[1]][3]
+            
+            # If the identifier holds a YARN, try to convert it to numeric
+            if dtype == 'YARN':
+                # Try to cast YARN to NUMBR or NUMBAR
+                if re.match(r'^-?[0-9]+$', str(value)):
+                    value = float(value)
+                    dtype = 'NUMBAR'
+                elif re.match(r'^-?[0-9]+\.[0-9]+$', str(value)):
+                    value = float(value)
+                    dtype = 'NUMBAR'
+                elif value == 'WIN':
+                    value = 1.0
+                    dtype = 'NUMBAR'
+                elif value == 'FAIL':
+                    value = 0.0
+                    dtype = 'NUMBAR'
+                    
         elif token[2] == 'NUMBR':
             value = int(token[1])
             dtype = 'NUMBR'
         elif token[2] == 'NUMBAR':
             value = float(token[1])
             dtype = 'NUMBAR'
+        elif token[2] == 'YARN':
+            # Implicit typecasting for YARN literals
+            yarn_val = token[1]
+            if re.match(r'^-?[0-9]+$', yarn_val):
+                value = int(yarn_val)
+                dtype = 'NUMBR'
+            elif re.match(r'^-?[0-9]+\.[0-9]+$', yarn_val):
+                value = float(yarn_val)
+                dtype = 'NUMBAR'
+            elif yarn_val == 'WIN':
+                value = 1.0
+                dtype = 'NUMBAR'
+            elif yarn_val == 'FAIL':
+                value = 0.0
+                dtype = 'NUMBAR'
+            else:
+                value = yarn_val
+                dtype = 'YARN'
+        elif token[2] == 'TROOF':
+            # Convert TROOF to numeric for arithmetic
+            if token[1] == 'WIN':
+                value = 1.0
+                dtype = 'NUMBAR'
+            else:  # FAIL
+                value = 0.0
+                dtype = 'NUMBAR'
         else:
             value = token[1]
             dtype = token[2]
@@ -83,8 +127,9 @@ class Execute(Parser):
             result_dtype = 'NUMBR'
         
         # Convert values to proper numeric types
-        left = float(left_val) if left_dtype == 'NUMBAR' else int(left_val)
-        right = float(right_val) if right_dtype == 'NUMBAR' else int(right_val)
+        left = float(left_val)
+        right = float(right_val)
+        
         
         # Perform operation
         match operator:
@@ -239,17 +284,13 @@ class Execute(Parser):
                     operand_val = self.get_bool_value(tos)
                 else:
                     operand_val = self.get_bool_value(tos)
-
                 result, result_dtype = self.perform_bool_operation(tos1[1], operand_val, None)
-
                 # Pop the two items
                 self.op_stack.pop()
                 self.op_stack.pop()
-
                 # Push result back
                 new_token = ('NONE', result, 'result', result_dtype)
                 self.op_stack.append(new_token)
-
                 return True
         
         # Handle binary operators (need 3 items on stack)
@@ -259,26 +300,13 @@ class Execute(Parser):
         tos = self.op_stack[-1]      # Right operand
         tos1 = self.op_stack[-2]     # Left operand  
         tos2 = self.op_stack[-3]     # Operator
-
+        
         # Check if tos2 is an operator and tos/tos1 are values
         if (isinstance(tos2, tuple) and tos2[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF', 'BIGGR OF', 'SMALLR OF'] and isinstance(tos, tuple) and isinstance(tos1, tuple)):
             
-            # Get values and datatypes
-            if tos[2] in ['NUMBR', 'NUMBAR', 'result']:
-                right_val = tos[1]
-                right_dtype = tos[2] if tos[2] != 'result' else tos[3]
-            elif tos[2] == 'IDENTIFIER':
-                right_val, right_dtype = self.get_value(tos)
-            else:
-                return False
-            
-            if tos1[2] in ['NUMBR', 'NUMBAR', 'result']:
-                left_val = tos1[1]
-                left_dtype = tos1[2] if tos1[2] != 'result' else tos1[3]
-            elif tos1[2] == 'IDENTIFIER':
-                left_val, left_dtype = self.get_value(tos1)
-            else:
-                return False
+            # Get values and datatypes using get_value for proper conversion
+            right_val, right_dtype = self.get_value(tos)
+            left_val, left_dtype = self.get_value(tos1)
             
             # Perform the operation
             result, result_dtype = self.perform_operation(
@@ -295,7 +323,7 @@ class Execute(Parser):
             self.op_stack.append(new_token)
             
             return True
-
+        
         elif (isinstance(tos2, tuple) and tos2[1] in ['BOTH OF', 'EITHER OF', 'WON OF'] and isinstance(tos, tuple) and isinstance(tos1, tuple)):
             
             # Get boolean values
@@ -422,85 +450,84 @@ class Execute(Parser):
     def execute_statement(self):
         """Execute a single statement and advance tokens"""
         token = self.current_token()
-
         if token[1] == 'VISIBLE':
             # Handle output statement
             self.consume()  # Consume VISIBLE
-            
+
             self.outputs = []  # Collect all values to print
-            
+            no_newline = False  # Track if ending with '!'
+
             while True:
                 current = self.current_token()
-                
+
                 # Check for arithmetic expression
-                if current[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF', 'BIGGR OF', 'SMALLR OF']:
+                if current[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF',
+                                  'MOD OF', 'BIGGR OF', 'SMALLR OF']:
                     self.execute_arithmetic_expr()
-                    
-                    # Keep reducing stack until no more reductions possible
                     while len(self.op_stack) > 1:
                         if not self.manage_stack():
                             break
-                    
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
                         self.outputs.append(str(result[1]))
-                
-                # Check for boolean expression
+
+                # Boolean
                 elif current[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT']:
                     self.execute_boolean_expr()
-                    
-                    # Keep reducing stack until no more reductions possible
                     while len(self.op_stack) > 1:
                         if not self.manage_stack():
                             break
-                    
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
                         self.outputs.append(str(result[1]))
-                
-                # Check for infinite arity boolean expression
+
+                # Infinite-arity boolean
                 elif current[1] in ['ALL OF', 'ANY OF']:
                     self.execute_infinite_arity_expr()
-                    
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
                         self.outputs.append(str(result[1]))
 
+                # Comparisons
                 elif current[1] in ['BOTH SAEM', 'DIFFRINT']:
                     self.execute_comparison_expr()
-
                     while len(self.op_stack) > 1:
                         if not self.manage_stack():
                             break
-
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
                         self.outputs.append(str(result[1]))
 
-                # Check for string concatenation
+                # Concatenation
                 elif current[1] == 'SMOOSH':
                     self.execute_concat_expr()
-                    
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
-                        outputs.append(str(result[1]))
+                        self.outputs.append(str(result[1]))
 
+                # Simple value
                 else:
-                    # Simple value to print
                     value, dtype = self.get_value(current)
                     self.outputs.append(str(value))
                     self.consume()
-                
-                # Check if there's a + separator for more expressions
-                if self.current_token() and self.current_token()[1] == '+':
-                    self.consume()  # Consume the +
-                    continue
-                else:
-                    break  # No more expressions to process
-            
-            # Print all collected outputs concatenated
-            print(f"{''.join(self.outputs)}")
 
+                # Check for "+"
+                if self.current_token() and self.current_token()[1] == '+':
+                    self.consume()
+                    continue
+
+                break
+
+            # FINAL CHECK: Does it end with "!"?
+            if self.current_token() and self.current_token()[1] == '!':
+                no_newline = True
+                self.consume()  # Consume '!'
+
+            # Output logic
+            if no_newline:
+                print(f"{''.join(self.outputs)}", end='')
+            else:
+                print(f"{''.join(self.outputs)}")
         elif token[2] == 'IDENTIFIER' and self.peek()[1] == 'R' and self.peek(2)[1] != 'MAEK':
             self.execute_reassignment()
 
