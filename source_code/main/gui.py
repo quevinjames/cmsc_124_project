@@ -226,13 +226,12 @@ class LOLGui(tk.Tk):
         self.line_numbers.yview_moveto(args[0])
 
     def update_line_numbers(self, event=None):
-        lines = self.source_text.get('1.0', 'end-1c').count('\n') + 1
-        line_content = "\n".join(str(i) for i in range(1, lines + 1))
+        line_count = int(self.source_text.index('end-1c').split('.')[0])
+        line_content = "\n".join(str(i) for i in range(1, line_count + 1))
         self.line_numbers.config(state="normal")
         self.line_numbers.delete("1.0", tk.END)
-        self.line_numbers.insert("1.0", lines)
+        self.line_numbers.insert("1.0", line_content)
         self.line_numbers.config(state="disabled")
-        self.line_numbers.yview_moveto(self.source_text.yview()[0])
 
     # ---------- File Operations ----------
     def open_file(self):

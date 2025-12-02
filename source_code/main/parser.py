@@ -870,67 +870,96 @@ class Parser:
         """================ parse_loop ================"""
         self.consume('IM IN YR')
         label_token = self.current_token()
+        
+        # 1. Validate Label
         if label_token and label_token[2] == 'IDENTIFIER':
             label = label_token[1]
             self.consume()
             self.push_stack(f'LOOP:{label}', label_token[3])
+        else:
+            self.add_error(self.current_token()[3], "Expected loop label after IM IN YR")
+            return False
 
-            if self.current_token()[1] == 'UPPIN' and self.peek()[1] == 'YR':
-                self.consume()
-                self.consume()
+        # 2. Validate Operation (UPPIN / NERFIN)
+        if self.current_token()[1] in ['UPPIN', 'NERFIN']:
+            self.consume()
+        else:
+            self.add_error(self.current_token()[3], "Expected UPPIN or NERFIN operation")
+            self.pop_stack(f'LOOP:{label}')  # Fix: Clean stack on error
+            return False
 
-            else:
-                self.errors.append(f"Error: Expecting UPPIN YR after identifier in line {self.current_token()[3]}")
+        # 3. Validate 'YR'
+        if self.current_token()[1] == 'YR':
+            self.consume('YR')
+        else:
+            self.add_error(self.current_token()[3], "Expected YR after operation")
+            self.pop_stack(f'LOOP:{label}')
+            return False
+
+        # 4. Validate Loop Variable
+        if self.current_token()[2] == 'IDENTIFIER':
+            if self.current_token()[1] not in self.symbol_table:
+                self.add_error(self.current_token()[3], f"Variable {self.current_token()[1]} not found")
+                self.pop_stack(f'LOOP:{label}')
                 return False
+            self.consume()
+        else:
+            self.add_error(self.current_token()[3], "Expected identifier after YR")
+            self.pop_stack(f'LOOP:{label}')
+            return False
 
-            if self.current_token()[2] == 'IDENTIFIER':
-                if self.current_token()[1] not in self.symbol_table:
-                    self.errors.append(f"Error: Variable name {self.current_token()[1]} not in symbol table in line {self.current_token()[3]}")
-                    return False
-                self.consume()
-
-            else:
-                self.errors.append(f"Error: Expecing an identifier after UPPIN YR in line{self.current_token()[3]}")
+        # 5. Validate TIL / WILE (Fixed Logic)
+        if self.current_token()[1] in ['TIL', 'WILE']:
+            self.consume()
+            # 6. Parse Expression (Relaxed Logic: allow any expression)
+            expr_val, expr_type = self.parse_expression()
+            if expr_val is None:
+                self.pop_stack(f'LOOP:{label}')
                 return False
+        else:
+            self.add_error(self.current_token()[3], "Expected TIL or WILE")
+            self.pop_stack(f'LOOP:{label}')
+            return False
 
-            if self.current_token()[1] in ['TIL', '']:
-                self.consume()  
+        # 7. Consume Newlines before body
+        while self.current_token() and self.current_token()[2] == 'NEWLINE':
+            self.consume()
 
+        # 8. Loop Body
+        while self.current_token() and self.current_token()[1] != 'IM OUTTA YR':
+            if self.current_token()[1] == 'KTHXBYE':
+                self.add_error(self.current_token()[3], "Unexpected end of file in loop (missing IM OUTTA YR)")
+                self.pop_stack(f'LOOP:{label}')
+                return False
+            
+            if self.current_token()[1] == 'GTFO':
+                gtfo_token = self.consume('GTFO')
+                # Handle GTFO if needed, usually just continue parsing syntax
             else:
-                self.errors.append(f"Error: Expecting TIL or WILE after identifier in line {self.current_token()[3]}")
+                self.parse_statement()
 
-            if self.current_token()[1] in ['BOTH SAEM', 'DIFFRINT']:
-                self.parse_expression()
-
-            else:
-                self.errors.append(f"Error: Expecting an expression after TIL in line {self.current_token()[3]}")
-                                    
-
-            while self.current_token() and self.current_token()[2] == 'NEWLINE':
-                self.position += 1
-
-
-
-            while self.current_token() and self.current_token()[1] != 'IM OUTTA YR':
-                if self.current_token()[1] == 'GTFO':
-                    self.consume('GTFO')
-                    return
+        # 9. Loop End
+        if self.current_token() and self.current_token()[1] == 'IM OUTTA YR':
+            self.consume('IM OUTTA YR')
+            exit_label = self.current_token()
+            if exit_label and exit_label[2] == 'IDENTIFIER':
+                if exit_label[1] == label:
+                    self.consume()
+                    self.pop_stack(f'LOOP:{label}')
                 else:
-                    self.parse_statement()
-
-            if self.current_token() and self.current_token()[1] == 'IM OUTTA YR':
-                self.consume('IM OUTTA YR')
-                exit_label = self.current_token()
-                if exit_label and exit_label[2] == 'IDENTIFIER':
-                    if exit_label[1] == label:
-                        self.consume()
-                        self.pop_stack(f'LOOP:{label}')
-                    else:
-                        self.errors.append(f"Loop label mismatch: '{label}' vs '{exit_label[1]}'")
-                        return False
-
+                    self.add_error(exit_label[3], f"Loop label mismatch: '{label}' vs '{exit_label[1]}'")
+                    self.pop_stack(f'LOOP:{label}')
+                    return False
             else:
-                self.errors.append(f"Error: Expecting IM OUTTA YR to close the loop on line")
+                self.add_error(exit_label[3], "Expected label after IM OUTTA YR")
+                self.pop_stack(f'LOOP:{label}')
+                return False
+        else:
+            self.add_error(self.current_token()[3], "Expected IM OUTTA YR")
+            self.pop_stack(f'LOOP:{label}')
+            return False
+
+        return True
 
 
     def parse_switch(self):
