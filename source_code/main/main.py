@@ -20,7 +20,7 @@ import gui  # GUI module
 def run_cli():
     """================ run_cli ================"""
     # ----------------- Load source code -----------------
-    input_file = "input.txt"
+    input_file = "02_gimmeh.lol"
     with open(input_file, 'r') as file:
         text = file.read()
 

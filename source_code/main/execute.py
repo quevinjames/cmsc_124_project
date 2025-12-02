@@ -1174,7 +1174,19 @@ class Execute(Parser):
 
         current_value, old1, old2, current_type = self.symbol_table[var_name]
 
-        new_value = input()
+        try:
+            import tkinter as tk
+            from tkinter import simpledialog
+            # GUI mode
+            root = tk.Tk()
+            root.withdraw()  # Hide the main window
+            new_value = simpledialog.askstring("Input", f"Enter value for {var_name}:")
+            if new_value is None:  # User cancelled
+                new_value = ""
+        except:
+        # CLI mode
+            new_value = input()
+    
 
         self.symbol_table[var_name] = (new_value, old1, old2, 'YARN')
 
