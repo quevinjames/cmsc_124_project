@@ -60,7 +60,7 @@ Key Features: <br/>
 
 **How to Use App:** 
 ### 
-1. Navigate to the source code directory: cd "source code"
+1. Navigate to the source code directory: cd source code, then in it there's a "main" file, type cd main
 2. Run the Main Script: python3 main.py
 3. Choose Mode:
     - The terminal will ask: Run in GUI mode? (y/n):
@@ -80,5 +80,6 @@ Key Features: <br/>
 ## Note to Instructor:
 
 See the various branches in this repository to see the significant commits of other members of this group project. Thanks!
+
 
 
