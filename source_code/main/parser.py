@@ -918,11 +918,11 @@ class Parser:
                 self.errors.append(f"Error: Expecing an identifier after UPPIN YR in line{self.current_token()[3]}")
                 return False
 
-            if self.current_token()[1] == 'TIL':
+            if self.current_token()[1] in ['TIL', '']:
                 self.consume()  
 
             else:
-                self.errors.append(f"Error: Expecting TILL after identifier in line {self.current_token()[3]}")
+                self.errors.append(f"Error: Expecting TIL or WILE after identifier in line {self.current_token()[3]}")
 
             if self.current_token()[1] in ['BOTH SAEM', 'DIFFRINT']:
                 self.parse_expression()
@@ -935,7 +935,27 @@ class Parser:
                 self.position += 1
 
 
-            
+
+            while self.current_token() and self.current_token()[1] != 'IM OUTTA YR':
+                if self.current_token()[1] == 'GTFO':
+                    self.consume('GTFO')
+                    print(f"    ✓ Break statement")
+                    return
+                else:
+                    self.parse_statement()
+
+            if self.current_token() and self.current_token()[1] == 'IM OUTTA YR':
+                self.consume('IM OUTTA YR')
+                exit_label = self.current_token()
+                if exit_label and exit_label[2] == 'IDENTIFIER':
+                    if exit_label[1] == label:
+                        self.consume()
+                        self.pop_stack(f'LOOP:{label}')
+                        print(f"  ✓ Loop '{label}' closed\n")
+                    else:
+                        self.errors.append(f"Loop label mismatch: '{label}' vs '{exit_label[1]}'")
+                        return False
+
             else:
                 self.errors.append(f"Error: Expecting IM OUTTA YR to close the loop on line")
 
