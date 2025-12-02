@@ -27,29 +27,31 @@ def run_cli():
     # ----------------- Tokenization -----------------
     lexer = Lexer()
     tokens = lexer.tokenize(text)
-    lexer.print_errors()
 
-    print("====================== All Tokens ======================\n")
-    for i in tokens:
-        print(f"Token:\t{i}\n")
-    print("========================================================\n")
-
-
-        # ----------------- Parsing -----------------
-    print("=============== PARSER HERE ===============")
-    success, parser, symbol_table, function_dictionary = parse_lolcode(tokens)
-    if success:
-        print("\n===========================\nParsing success\n===========================\n")
-
-        semantic_success, semantic_errors = analyze_lolcode(tokens, symbol_table, function_dictionary)
-
-        if semantic_success:
-            print("\n=======================\n Semantic Success\n===========================\n")
-
-            final_symbol_table, final_function_table = execute_lolcode(tokens, symbol_table, function_dictionary)
+    if len(lexer.errors) == 0:
+        lexer_success = True
 
     else:
-        print("\n===========================\nParsing failed, check errors above\n===========================\n")
+        lexer_success = False
+
+
+        # ----------------- Parsing --------        ---------
+    if lexer_success:
+            # ----------------- Parsing -----------------
+        success, parser, symbol_table, function_dictionary, parse_errors = parse_lolcode(tokens)
+        if success:
+            semantic_success, semantic_errors = analyze_lolcode(tokens, symbol_table, function_dictionary)
+            if semantic_success:
+                final_symbol_table, final_function_table, final_errors = execute_lolcode(tokens, symbol_table, function_dictionary)
+            else:
+                for i in semantic_errors:
+                    print(i)
+        else:
+            for i in parse_errors:
+                print(i)
+                        
+    else:
+        lexer.print_errors()
 
 # ================================================================
 # ======================= MAIN ENTRY ============================
