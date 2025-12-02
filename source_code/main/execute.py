@@ -374,6 +374,16 @@ class Execute(Parser):
             if tos[2] in ['NUMBR', 'NUMBAR', 'result']:
                 right_val = tos[1]
                 right_dtype = tos[2] if tos[2] != 'result' else tos[3]
+
+            elif tos[1] in ['1']:
+                right_val = 1
+                right_dtype = 'NUMBR'
+
+            elif tos[1] in ['1.0']:
+                right_val = 1.0
+                right_dtype = 'NUMBAR'
+
+
             elif tos[2] == 'IDENTIFIER':
                 right_val, right_dtype = self.get_value(tos)
             else:
@@ -382,6 +392,16 @@ class Execute(Parser):
             if tos1[2] in ['NUMBR', 'NUMBAR', 'result']:
                 left_val = tos1[1]
                 left_dtype = tos1[2] if tos1[2] != 'result' else tos1[3]
+
+            elif tos[1] in ['1']:
+                left_val = 1
+                left_dtype = 'NUMBR'
+
+            elif tos[1] in ['1.0']:
+                left_val = 1.0
+                left_dtype = 'NUMBAR'
+
+
             elif tos1[2] == 'IDENTIFIER':
                 left_val, left_dtype = self.get_value(tos1)
             else:
@@ -542,18 +562,6 @@ class Execute(Parser):
         elif token[2] == 'IDENTIFIER' and self.peek()[1] == 'R' and self.peek(2)[1] != 'MAEK':
             self.execute_reassignment()
 
-        elif token[2] == 'IDENTIFIER' and self.peek()[1] == 'IS NOW A':
-            self.execute_recast(1)
-        
-        elif token[2] in ['IDENTIFIER', 'NUMBR', 'NUMBAR', 'YARN', 'TROOF']:
-            value, dtype = self.get_value(token)
-            self.it_var = value  # IMPORTANT: Update IT variable
-            self.consume()
-        # ----------------------
-
-        elif token[1] == 'MAEK':
-            self.execute_recast(3)
-
         elif token[1] == 'I HAS A':
             self.execute_declaration()
 
@@ -647,6 +655,7 @@ class Execute(Parser):
         # Consume newline if present
         if self.current_token()[2] == 'NEWLINE':
             self.consume()
+
 
     def execute_boolean_expr(self):
         """Execute boolean expression"""
@@ -1256,7 +1265,12 @@ class Execute(Parser):
             self.position += 1
         
         # Check if IT is truthy
-        it_value = self.it_var[-1][0] if self.it_var else None
+        # Make sure it_var exists and has the right structure
+        if self.it_var and len(self.it_var) > 0:
+            it_value = self.it_var[-1][0]  # Get the value from the tuple
+        else:
+            it_value = 'FAIL'
+        
         is_truthy = it_value in ['WIN', 1, '1', 1.0, '1.0', True]
         
         # Consume 'YA RLY'
@@ -1267,116 +1281,121 @@ class Execute(Parser):
             self.position += 1
         
         if is_truthy:
-            # Execute YA RLY block
-            while self.current_token() and self.current_token()[1] not in ['NO WAI', 'OIC']:
+            # Execute YA RLY block until we hit MEBBE
+            while self.current_token() and self.current_token()[1] not in ['MEBBE', 'NO WAI', 'OIC']:
                 self.execute_statement()
-        else:
-            # Skip YA RLY block
-            while self.current_token() and self.current_token()[1] not in ['NO WAI', 'OIC']:
+            
+            # Consume everything until OIC (skip MEBBE and NO WAI blocks)
+            while self.current_token() and self.current_token()[1] != 'OIC':
                 self.consume()
-        
-        # NO WAI block (optional)
-        if self.current_token() and self.current_token()[1] == 'NO WAI':
-            self.consume()  # Consume 'NO WAI'
+        else:
+            # Skip YA RLY block until we hit MEBBE or NO WAI
+            while self.current_token() and self.current_token()[1] not in ['MEBBE', 'NO WAI', 'OIC']:
+                self.consume()
             
-            # Skip newlines after NO WAI
-            while self.current_token() and self.current_token()[2] == 'NEWLINE':
-                self.position += 1
-            
-            if not is_truthy:
-                # Execute NO WAI block (only if condition was false)
-                while self.current_token() and self.current_token()[1] != 'OIC':
-                    self.execute_statement()
-            else:
-                # Skip NO WAI block (condition was true)
-                while self.current_token() and self.current_token()[1] != 'OIC':
+            # Skip all MEBBE blocks
+            while self.current_token() and self.current_token()[1] == 'MEBBE':
+                # Skip the entire MEBBE block
+                while self.current_token() and self.current_token()[1] not in ['MEBBE', 'NO WAI', 'OIC']:
                     self.consume()
-
-        
-        if self.current_token()[1] == 'OIC':
-            self.consume()
-
-    def execute_switch(self):
-        # Consume 'WTF?'
-        self.consume()
-        
-        # Skip newlines after WTF?
-        while self.current_token() and self.current_token()[2] == 'NEWLINE':
-            self.position += 1
-        
-        it_value = self.it_var[-1][0] if self.it_var else None
-        case_matched = False
-        
-        # Process OMG cases
-        while self.current_token() and self.current_token()[1] == 'OMG':
-            self.consume()  # Consume 'OMG'
             
-            # Get the case literal value
-            token = self.current_token()
-            if token[2] == 'NUMBR':  # Integer literal
-                case_value = int(token[1])
-            elif token[2] == 'NUMBAR':  # Float literal
-                case_value = float(token[1])
-            elif token[2] == 'YARN':  # String literal
-                case_value = token[1]
-            elif token[1] == 'WIN':  # Boolean literal
-                case_value = 'WIN'
-            elif token[1] == 'FAIL':  # Boolean literal
-                case_value = 'FAIL'
-            else:
-                case_value = token[1]
-            
-            self.consume()  # Consume the literal
-            
-            # Skip newlines after case value
-            while self.current_token() and self.current_token()[2] == 'NEWLINE':
-                self.position += 1
-            
-            # Check if this case matches AND we haven't matched a case yet
-            if case_value == it_value and not case_matched:
-                case_matched = True
+            # NO WAI block (optional)
+            if self.current_token() and self.current_token()[1] == 'NO WAI':
+                self.consume()  # Consume 'NO WAI'
                 
-                # Execute THIS case block only
-                while self.current_token() and self.current_token()[1] not in ['OMG', 'OMGWTF', 'OIC']:
-                    if self.current_token()[1] == 'GTFO':
-                        self.consume()  # Consume 'GTFO'
-                        
-                        # Skip newlines after GTFO
-                        while self.current_token() and self.current_token()[2] == 'NEWLINE':
-                            self.position += 1
-                        break
-                    
-                    self.execute_statement()
-            else:
-                # Skip this case block
-                while self.current_token() and self.current_token()[1] not in ['OMG', 'OMGWTF', 'OIC']:
-                    if self.current_token()[1] == 'GTFO':
-                        self.consume()
-                        while self.current_token() and self.current_token()[2] == 'NEWLINE':
-                            self.position += 1
-                        break
-                    self.consume()
-        
-        # Process OMGWTF (default case)
-        if self.current_token() and self.current_token()[1] == 'OMGWTF':
-            self.consume()  # Consume 'OMGWTF'
-            
-            # Skip newlines after OMGWTF
-            while self.current_token() and self.current_token()[2] == 'NEWLINE':
-                self.position += 1
-            
-            # Execute default case only if no case matched
-            if not case_matched:
+                # Skip newlines after NO WAI
+                while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                    self.position += 1
+                
+                # Execute NO WAI block until OIC
                 while self.current_token() and self.current_token()[1] != 'OIC':
                     self.execute_statement()
-            else:
-                # Skip default case
-                while self.current_token() and self.current_token()[1] != 'OIC':
-                    self.consume()
         
         # Consume 'OIC'
         if self.current_token() and self.current_token()[1] == 'OIC':
             self.consume()
+
+        def execute_switch(self):
+            # Consume 'WTF?'
+            self.consume()
+            
+            # Skip newlines after WTF?
+            while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                self.position += 1
+            
+            it_value = self.it_var[-1][0] if self.it_var else None
+            case_matched = False
+            
+            # Process OMG cases
+            while self.current_token() and self.current_token()[1] == 'OMG':
+                self.consume()  # Consume 'OMG'
+                
+                # Get the case literal value
+                token = self.current_token()
+                if token[2] == 'NUMBR':  # Integer literal
+                    case_value = int(token[1])
+                elif token[2] == 'NUMBAR':  # Float literal
+                    case_value = float(token[1])
+                elif token[2] == 'YARN':  # String literal
+                    case_value = token[1]
+                elif token[1] == 'WIN':  # Boolean literal
+                    case_value = 'WIN'
+                elif token[1] == 'FAIL':  # Boolean literal
+                    case_value = 'FAIL'
+                else:
+                    case_value = token[1]
+                
+                self.consume()  # Consume the literal
+                
+                # Skip newlines after case value
+                while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                    self.position += 1
+                
+                # Check if this case matches AND we haven't matched a case yet
+                if case_value == it_value and not case_matched:
+                    case_matched = True
+                    
+                    # Execute THIS case block only
+                    while self.current_token() and self.current_token()[1] not in ['OMG', 'OMGWTF', 'OIC']:
+                        if self.current_token()[1] == 'GTFO':
+                            self.consume()  # Consume 'GTFO'
+                            
+                            # Skip newlines after GTFO
+                            while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                                self.position += 1
+                            break
+                        
+                        self.execute_statement()
+                else:
+                    # Skip this case block
+                    while self.current_token() and self.current_token()[1] not in ['OMG', 'OMGWTF', 'OIC']:
+                        if self.current_token()[1] == 'GTFO':
+                            self.consume()
+                            while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                                self.position += 1
+                            break
+                        self.consume()
+            
+            # Process OMGWTF (default case)
+            if self.current_token() and self.current_token()[1] == 'OMGWTF':
+                self.consume()  # Consume 'OMGWTF'
+                
+                # Skip newlines after OMGWTF
+                while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                    self.position += 1
+                
+                # Execute default case only if no case matched
+                if not case_matched:
+                    while self.current_token() and self.current_token()[1] != 'OIC':
+                        self.execute_statement()
+                else:
+                    # Skip default case
+                    while self.current_token() and self.current_token()[1] != 'OIC':
+                        self.consume()
+            
+            # Consume 'OIC'
+            if self.current_token() and self.current_token()[1] == 'OIC':
+                self.consume()
 
     def execute_loop(self):
         """Execute loop: IM IN YR <label> UPPIN/NERFIN YR <var> TIL/WILE <condition>"""
@@ -1797,6 +1816,9 @@ def execute_lolcode(tokens, symbol_table, function_dictionary):
     new_function_dictionary = executor.function_dictionary
     new_errors = executor.errors
     new_outputs = executor.outputs
+    if len(executor.it_var) != 0:
+        it_var = executor.it_var[-1][0]
+        new_symbol_table['IT'] = it_var
     
    
     return new_symbol_table, new_function_dictionary, new_errors

@@ -159,6 +159,42 @@ class Lexer:
 
         return new_lines
 
+    def remove_multiline_comments(self, lines):
+        cleaned_lines = []
+        in_comment = False
+        
+        for line in lines:
+            # Check if we're entering a multi-line comment
+            if 'OBTW' in line:
+                # Keep any content before OBTW on the same line
+                before_obtw = line.split('OBTW', 1)[0].strip()
+                if before_obtw:
+                    cleaned_lines.append(before_obtw)
+                in_comment = True
+                
+                # Check if TLDR is on the same line
+                if 'TLDR' in line:
+                    after_tldr = line.split('TLDR', 1)[1].strip()
+                    if after_tldr:
+                        cleaned_lines.append(after_tldr)
+                    in_comment = False
+                continue
+            
+            # Check if we're exiting a multi-line comment
+            if 'TLDR' in line:
+                # Keep any content after TLDR on the same line
+                after_tldr = line.split('TLDR', 1)[1].strip()
+                if after_tldr:
+                    cleaned_lines.append(after_tldr)
+                in_comment = False
+                continue
+            
+            # If not in a comment, keep the line
+            if not in_comment:
+                cleaned_lines.append(line)
+        
+        return cleaned_lines
+
     # ================================================================
     # ======================= COMMENT HANDLING ======================
     # ================================================================
@@ -286,7 +322,10 @@ class Lexer:
     # ================================================================
     def tokenize(self, text):
         text_with_linenum = self.assign_linenum(text)
-        final_text = self.remove_comments(text_with_linenum)
+        # Remove multi-line comments first
+        text_no_multiline = self.remove_multiline_comments(text_with_linenum)
+        # Then remove single-line comments
+        final_text = self.remove_comments(text_no_multiline)
         
         all_tokens = []
         for raw_line in final_text.split('\n'):
@@ -302,7 +341,6 @@ class Lexer:
 
         self.update_counters(all_tokens)
         return all_tokens
-
 
 # ======================= ERROR HANDLING ==========================
     
