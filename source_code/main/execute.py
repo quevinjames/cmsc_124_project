@@ -566,6 +566,12 @@ class Execute(Parser):
         elif token[1] == 'IM IN YR':
             self.execute_loop()
 
+        elif token[1] == 'HOW IZ I':
+            self.execute_function_definition()
+
+        elif token[1] == 'I IZ':
+            self.execute_function()
+
               
         elif token[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF', 'BIGGR OF', 'SMALLR OF']:
             self.execute_arithmetic_expr()
@@ -1622,7 +1628,6 @@ class Execute(Parser):
                     # Store the complete function (from HOW IZ I to IF U SAY SO inclusive)
                     self.function_bodies[func_name] = self.tokens[start_pos:end_pos]
                     
-                    print(f"Stored function '{func_name}' with {len(self.function_bodies[func_name])} tokens")
                     
                     # Move position past this function
                     pos = end_pos
@@ -1630,24 +1635,144 @@ class Execute(Parser):
             
             pos += 1
         
-        print(f"\nTotal functions stored: {len(self.function_bodies)}")
-        print(f"Function names: {list(self.function_bodies.keys())}")
 
+                    
+    def execute_function_definition(self):
+        """Skip function definition during normal execution"""
+        token = self.consume('HOW IZ I')
+       
+        while self.current_token() and self.current_token()[1] != 'IF U SAY SO':
+            self.consume()
 
+    def execute_function(self):
+        """
+        Executes: I IZ <func_name> [YR <arg1> [AN YR <arg2> ...]] MKAY
+        """
+        if self.current_token()[1] == 'I':
+            self.consume(); self.consume() # I, IZ
+        else:
+            self.consume() # I IZ (merged)
+
+        func_name = self.consume()[1]
+
+        if func_name not in self.function_bodies:
+            raise Exception(f"Runtime Error: Function '{func_name}' not defined.")
+
+        expected_params = self.function_dictionary.get(func_name, [])
+        args_values = []
+
+        # Parse Arguments
+        while self.current_token():
+            tok = self.current_token()[1]
+            if tok == 'MKAY' or self.current_token()[2] == 'NEWLINE':
+                break
+                
+            if tok == 'YR':
+                self.consume()
+                args_values.append(self.evaluate_expression())
+            elif tok == 'AN':
+                self.consume()
+                if self.current_token()[1] == 'YR': self.consume()
+                args_values.append(self.evaluate_expression())
+            else:
+                break
+        
+        if self.current_token()[1] == 'MKAY': self.consume()
+
+        if len(args_values) != len(expected_params):
+            raise Exception(f"Function '{func_name}' expects {len(expected_params)} args, got {len(args_values)}")
+
+        old_tokens = self.tokens
+        old_position = self.position
+        old_symbol_table = self.symbol_table
+        
+        # Copy global scope so we don't pollute it, but can still read globals if needed
+        local_symbol_table = old_symbol_table.copy()
+        
+        # Bind arguments
+        for i, (param_name, _) in enumerate(expected_params):
+            # Storing as (value, type, subtype, internal_type)
+            local_symbol_table[param_name] = (args_values[i], None, None, 'NOOB')
+
+        self.tokens = self.function_bodies[func_name]
+        self.position = 0
+        self.symbol_table = local_symbol_table
+        
+        # Skip the definition line (HOW IZ I ...)
+        while self.position < len(self.tokens):
+            if self.current_token()[2] == 'NEWLINE':
+                self.consume()
+                break
+            self.consume()
+
+        
+        # Default return is NOOB (represented as None in Python)
+        return_value = None 
+
+        while self.position < len(self.tokens):
+            current = self.current_token()
+            token_type = current[1]
+
+            if token_type == 'FOUND YR':
+                self.consume()
+                return_value = self.evaluate_expression()
+                break 
+            
+            elif token_type == 'GTFO':
+                self.consume()
+                return_value = 'NOOB' # Explicitly NOOB
+                break
+
+            elif token_type == 'IF U SAY SO':
+                break
+
+            # CASE D: Execute Statement
+            else:
+                self.execute_statement()
+
+        self.tokens = old_tokens
+        self.position = old_position
+        self.symbol_table = old_symbol_table
+        
+        # Update IT variable
+        self.it_var = return_value
+        
+        # Return for nested calls
+        return return_value
+    def evaluate_expression(self):
+        """Helper to evaluate literal, variable, or arithmetic expression"""
+        # You likely already have this logic. 
+        # This is just a placeholder to ensure the code above runs.
+        current = self.current_token()
+        
+        # Arithmetic/Logic start
+        if current[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'BOTH SAEM']: 
+            self.execute_arithmetic_expr() # This should push result to stack
+            return self.op_stack.pop()[1] # Return the value
+            
+        # Literal
+        elif current[2] in ['NUMBR', 'NUMBAR', 'YARN', 'TROOF']:
+            self.consume()
+            return current[1]
+            
+        # Variable
+        elif current[2] == 'IDENTIFIER':
+            var_name = current[1]
+            self.consume()
+            return self.symbol_table[var_name][0]
+            
+        return None
 
    
 def execute_lolcode(tokens, symbol_table, function_dictionary):
     """Entry point for code execution"""
     executor = Execute(tokens, symbol_table, function_dictionary)
     executor.store_function_bodies()
-    print(executor.function_bodies)
     executor.execute()
     new_symbol_table = executor.symbol_table
     new_function_dictionary = executor.function_dictionary
     new_errors = executor.errors
     new_outputs = executor.outputs
-    print(executor.it_var)
-    print(executor.function_dictionary)
     
    
     return new_symbol_table, new_function_dictionary, new_errors
