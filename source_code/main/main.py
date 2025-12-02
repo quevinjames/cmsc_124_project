@@ -51,7 +51,8 @@ def run_cli():
                 print(i)
                         
     else:
-        lexer.print_errors()
+        for i in lexer.errors:
+            print(i)
 
 # ================================================================
 # ======================= MAIN ENTRY ============================

@@ -36,7 +36,7 @@ class Lexer:
             'O RLY?', 'YA', 'RLY', 'NO', 'WAI', 'WTF?', 'IM', 'IN', 'YR', 'OUTTA', 'HOW', 'IZ', 'IF',
             'U', 'SAY', 'SO', 'FOUND', 'ITZ', 'R', 'NOT', 'SMOOSH', 'VISIBLE', 'GIMMEH',
             'MEBBE', 'OIC', 'OMG', 'OMGWTF', 'UPPIN', 'NERFIN', 'TIL', 'WILE', 'GTFO', 'MKAY',
-            'HAI', 'KTHXBYE', 'BUHBYE', 'WAZZUP'
+            'HAI', 'KTHXBYE', 'BUHBYE', 'WAZZUP', 'IT'
         ])
 
     # ================================================================
@@ -104,6 +104,7 @@ class Lexer:
             ('WILE', 'Loop Condition'),
             ('GTFO', 'Break Statement'),
             ('MKAY', 'End of Expression'),
+            ('IT', 'Implicit Variable')
         ]
         for keyword, desc in single_word:
             patterns.append((re.compile(r'\b' + keyword + r'\b'), desc, 'KEYWORD'))

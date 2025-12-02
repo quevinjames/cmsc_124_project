@@ -335,6 +335,9 @@ class Parser:
             self.consume()
             return (value, data_type)
 
+        elif token[1] == 'IT':
+            value = -1
+            data_type = None
         # ===== Math Ops =====
         elif token[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF']:
             op = token[1]
@@ -583,9 +586,14 @@ class Parser:
 
 
         # If current token exists use its line, else 0
+
+        
         ct = self.current_token()
         ln = ct[3] if ct and len(ct) > 3 else 0
-        if self.current_token()[1] == '!':
+
+        if self.current_token()[1] == 'IT':
+            pass
+        elif self.current_token()[1] == '!':
             pass 
         else:
             self.expect_end_of_statement(f"VISIBLE statement line {ln}", ln)
@@ -1124,6 +1132,51 @@ class Parser:
         return (None, None, None, None)
 
 
+    def store_function_bodies(self):
+        """
+        Scan through all tokens and store complete function definitions.
+        Stores tokens from 'HOW IZ I' to 'IF U SAY SO' (inclusive) for each function.
+        Key: function name
+        Value: list of tokens for that function
+        """
+        pos = 0
+        
+        while pos < len(self.tokens):
+            token = self.tokens[pos]
+            
+            # Check if we found a function definition
+            if token[1] == 'HOW IZ I':
+                # Get function name (next token after HOW IZ I)
+                if pos + 1 < len(self.tokens):
+                    func_name = self.tokens[pos + 1][1]
+                    
+                    # Find the end of this function (IF U SAY SO)
+                    start_pos = pos
+                    end_pos = pos
+                    
+                    # Search for IF U SAY SO
+                    while end_pos < len(self.tokens):
+                        if self.tokens[end_pos][1] == 'IF U SAY SO':
+                            # Include IF U SAY SO in the stored tokens
+                            end_pos += 1
+                            break
+                        end_pos += 1
+                    
+                    # Store the complete function (from HOW IZ I to IF U SAY SO inclusive)
+                    self.function_bodies[func_name] = self.tokens[start_pos:end_pos]
+                    
+                    print(f"Stored function '{func_name}' with {len(self.function_bodies[func_name])} tokens")
+                    
+                    # Move position past this function
+                    pos = end_pos
+                    continue
+            
+            pos += 1
+        
+        print(f"\nTotal functions stored: {len(self.function_bodies)}")
+        print(f"Function names: {list(self.function_bodies.keys())}")
+
+
 def parse_lolcode(tokens):
     """================ parse_lolcode ================"""
     parser = Parser(tokens)
@@ -1131,6 +1184,12 @@ def parse_lolcode(tokens):
     symbol_table = parser.adjust_dictionary()
     parser_errors = parser.errors
     function_dictionary = {}
+
+    for func_name, info in parser.function_scopes.items():
+        param_list = info["params"]
+
+        # Each parameter becomes (name, declared-type)
+        function_dictionary[func_name] = [(p, "NOOB") for p in param_list]
 
 
     return success, parser, symbol_table, function_dictionary, parser_errors
