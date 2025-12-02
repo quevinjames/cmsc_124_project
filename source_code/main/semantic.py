@@ -411,8 +411,10 @@ class SemanticAnalyzer(Parser):
             if type == 'arithmetic':
                 is_numbr = re.match(r'^-?[0-9]+$', token[1])
                 is_numbar = re.match(r'^-?[0-9]+\.[0-9]+$', token[1])
+                # Allow WIN/FAIL in arithmetic operations
+                is_troof = token[1] in ['WIN', 'FAIL']
 
-                if is_numbr or is_numbar:
+                if is_numbr or is_numbar or is_troof:
                     return True
                 else:
                     self.errors.append(
@@ -446,8 +448,10 @@ class SemanticAnalyzer(Parser):
                 if type == 'arithmetic':
                     is_numbr = re.match(r'^-?[0-9]+$', self.symbol_table[token[1]][0])
                     is_numbar = re.match(r'^-?[0-9]+\.[0-9]+$', self.symbol_table[token[1]][0])
+                    # Allow WIN/FAIL in arithmetic operations
+                    is_troof = self.symbol_table[token[1]][0] in ['WIN', 'FAIL']
 
-                    if is_numbr or is_numbar:
+                    if is_numbr or is_numbar or is_troof:
                         return True
                     else:
                         self.errors.append(
@@ -467,6 +471,17 @@ class SemanticAnalyzer(Parser):
                         )
                         return False
 
+            # Allow TROOF type in arithmetic operations (WIN=1, FAIL=0)
+            if type == 'arithmetic':
+                if self.symbol_table[token[1]][3] in ['NUMBR', 'NUMBAR', 'TROOF']:
+                    return True
+                else:
+                    self.errors.append(
+                        f"Line {token[3]}: Invalid operand type '{self.symbol_table[token[1]][3]}' "
+                        f"for '{operation_token[1]}' operation (expected NUMBR, NUMBAR, or TROOF)"
+                    )
+                    return False
+
             if type == 'boolean':
                 if self.symbol_table[token[1]][3] == 'TROOF':
                     return True
@@ -485,18 +500,13 @@ class SemanticAnalyzer(Parser):
 
                     return False
 
-            elif type == 'arithmetic':
-                if self.symbol_table[token[1]][3] not in ['NUMBR', 'NUMBAR']:
-                    self.errors.append(
-                        f"Line {token[3]}: Invalid operand type '{self.symbol_table[token[1]][3]}' "
-                        f"for '{operation_token[1]}' operation (expected NUMBR or NUMBAR)"
-                    )
         else:
             if type == 'arithmetic':
-                if token[2] in ['NUMBR', 'NUMBAR']:
+                # Allow TROOF literals (WIN/FAIL) in arithmetic operations
+                if token[2] in ['NUMBR', 'NUMBAR', 'TROOF']:
                     return True
                 else:
-                    self.errors.append(f"Error: Invalid data type '{token[2]}' for {operation_token[1]} operation on line {token[3]}. Expected NUMBR or NUMBAR.")
+                    self.errors.append(f"Error: Invalid data type '{token[2]}' for {operation_token[1]} operation on line {token[3]}. Expected NUMBR, NUMBAR, or TROOF.")
                     return False
 
             elif type == 'boolean':
@@ -517,7 +527,6 @@ class SemanticAnalyzer(Parser):
                     return False
         
         return True
-
 def analyze_lolcode(tokens, symbol_table, function_dictionary):
     """Entry point for semantic analysis"""
     semantic = SemanticAnalyzer(tokens, symbol_table, function_dictionary)

@@ -585,7 +585,10 @@ class Parser:
         # If current token exists use its line, else 0
         ct = self.current_token()
         ln = ct[3] if ct and len(ct) > 3 else 0
-        self.expect_end_of_statement(f"VISIBLE statement line {ln}", ln)
+        if self.current_token()[1] == '!':
+            pass 
+        else:
+            self.expect_end_of_statement(f"VISIBLE statement line {ln}", ln)
         return expressions
 
     def parse_input(self):
