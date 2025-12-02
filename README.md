@@ -3,16 +3,19 @@
 **Group Name:** Cause <br/>
 **Section:** ST-6L <br/>
 **Members:** <br/>
- Quevin James Custodio
+ Quevin James Custodio<br/>
  Fernando IV Eugene Castro <br/>
 
-**Contributions:**
-Quevin James Custodio
+**Contributions:**<br/>
+
+**Quevin James Custodio**
+
  - made the lexer.py, parser.py, semantic.py and execute.py
  - helped in getting resources from online sources 
- - he facilitated the project
+ - he facilitated the project *<br/>
+ 
+**Fernando IV Eugene Castro**
 
-Fernando IV Eugene Castro
  - made the gui.py
  - fixed the error format for the lexer.py, parser.py, and semantic.py
  - made the README.md file
@@ -57,12 +60,12 @@ Key Features: <br/>
 
 **How to Use App:** 
 ### 
-1. Navigate to the source code directory: cd "source code"
+1. Navigate to the source code directory: cd source code, then in it there's a "main" file, type cd main
 2. Run the Main Script: python3 main.py
 3. Choose Mode:
     - The terminal will ask: Run in GUI mode? (y/n):
     - Type y to launch the GUI.
-    - Type n to run in CLI or basically won't run in GUI.
+    - Type n to run in CLI or basically won't run GUI.
 4. In GUI Mode:
     - Click "Upload File" to load a .lol file (sample files are in the test cases folder).
     - Click "Analyze" to tokenize, parse, and execute the code.
@@ -75,4 +78,8 @@ Key Features: <br/>
 <br/>
 
 ## Note to Instructor:
+
 See the various branches in this repository to see the significant commits of other members of this group project. Thanks!
+
+
+
