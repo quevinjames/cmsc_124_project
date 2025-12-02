@@ -414,17 +414,9 @@ class Execute(Parser):
 
     def execute(self):
         """Main execute entry point"""
-        print("\n================= START EXECUTE HERE =================\n")
 
         while self.current_token()[1] != 'KTHXBYE':
             self.execute_statement()
-
-        if len(self.it_var) != 0:
-            print(f"IT : {self.it_var[-1][0]}\n")
-
-        for i in self.symbol_table:
-            print(f"{i}: {self.symbol_table[i]}\n")
-
 
 
     def execute_statement(self):
@@ -452,8 +444,6 @@ class Execute(Parser):
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
                         self.outputs.append(str(result[1]))
-                    else:
-                        print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
                 
                 # Check for boolean expression
                 elif current[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT']:
@@ -467,8 +457,6 @@ class Execute(Parser):
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
                         self.outputs.append(str(result[1]))
-                    else:
-                        print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
                 
                 # Check for infinite arity boolean expression
                 elif current[1] in ['ALL OF', 'ANY OF']:
@@ -477,8 +465,6 @@ class Execute(Parser):
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
                         self.outputs.append(str(result[1]))
-                    else:
-                        print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
 
                 elif current[1] in ['BOTH SAEM', 'DIFFRINT']:
                     self.execute_comparison_expr()
@@ -490,8 +476,6 @@ class Execute(Parser):
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
                         self.outputs.append(str(result[1]))
-                    else:
-                        print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
 
                 # Check for string concatenation
                 elif current[1] == 'SMOOSH':
@@ -500,8 +484,6 @@ class Execute(Parser):
                     if len(self.op_stack) == 1:
                         result = self.op_stack.pop()
                         outputs.append(str(result[1]))
-                    else:
-                        print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
 
                 else:
                     # Simple value to print
@@ -517,7 +499,7 @@ class Execute(Parser):
                     break  # No more expressions to process
             
             # Print all collected outputs concatenated
-            print(f"OUTPUT: {''.join(self.outputs)}")
+            print(f"{''.join(self.outputs)}")
 
         elif token[2] == 'IDENTIFIER' and self.peek()[1] == 'R' and self.peek(2)[1] != 'MAEK':
             self.execute_reassignment()
@@ -555,13 +537,9 @@ class Execute(Parser):
                     break
             
             if len(self.op_stack) == 1:
-                print(f"Arithmetic successful: {self.op_stack[0]}")
                 final_result = self.op_stack.pop()
-                print(final_result)
                 self.it_var.append((final_result[1], final_result[0], final_result[2], final_result[3]))
                 return final_result
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
 
         elif token[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT']:
             self.execute_boolean_expr()
@@ -572,23 +550,17 @@ class Execute(Parser):
                     break
             
             if len(self.op_stack) == 1:
-                print(f"Boolean successful: {self.op_stack[0]}")
                 final_result = self.op_stack.pop()
                 self.it_var.append((final_result[1], final_result[0], final_result[2], final_result[3]))
                 return final_result
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
 
         elif token[1] in ['ALL OF', 'ANY OF']:
             self.execute_infinite_arity_expr()
             
             if len(self.op_stack) == 1:
-                print(f"Infinite arity boolean successful: {self.op_stack[0]}")
                 final_result = self.op_stack.pop()
                 self.it_var.append((final_result[1], final_result[0], final_result[2], final_result[3]))
                 return final_result
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
 
         elif token[1] in ['BOTH SAEM', 'DIFFRINT']:
             self.execute_comparison_expr()
@@ -599,23 +571,17 @@ class Execute(Parser):
                     break
             
             if len(self.op_stack) == 1:
-                print(f"Comparison successful: {self.op_stack[0]}")
                 final_result = self.op_stack.pop()
                 self.it_var.append((final_result[1], final_result[0], final_result[2], final_result[3]))
                 return final_result
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
         
         elif token[1] == 'SMOOSH':
             self.execute_concat_expr()
             
             if len(self.op_stack) == 1:
-                print(f"Concatenation successful: {self.op_stack[0]}")
                 final_result = self.op_stack.pop()
                 self.it_var.append((final_result[1], final_result[0], final_result[2], final_result[3]))
                 return final_result
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
         
         else:
             # Unknown token - consume to avoid infinite loop
@@ -879,8 +845,6 @@ class Execute(Parser):
             if len(self.op_stack) == 1:
                 result = self.op_stack.pop()  # ('NONE', value, 'result', dtype)
                 self.symbol_table[var_token[1]] = (result[1], 'IDENTIFIER', var_token[3], result[3])
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
         
         # Handle boolean expressions
         elif current[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT']:
@@ -893,8 +857,6 @@ class Execute(Parser):
             if len(self.op_stack) == 1:
                 result = self.op_stack.pop()  # ('NONE', value, 'result', dtype)
                 self.symbol_table[var_token[1]] = (result[1], 'IDENTIFIER', var_token[3], result[3])
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
         
         # Handle infinite arity boolean expressions
         elif current[1] in ['ALL OF', 'ANY OF']:
@@ -903,8 +865,6 @@ class Execute(Parser):
             if len(self.op_stack) == 1:
                 result = self.op_stack.pop()  # ('NONE', value, 'result', dtype)
                 self.symbol_table[var_token[1]] = (result[1], 'IDENTIFIER', var_token[3], result[3])
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
         
         # Handle comparison expressions
         elif current[1] in ['BOTH SAEM', 'DIFFRINT']:
@@ -917,8 +877,6 @@ class Execute(Parser):
             if len(self.op_stack) == 1:
                 result = self.op_stack.pop()  # ('NONE', value, 'result', dtype)
                 self.symbol_table[var_token[1]] = (result[1], 'IDENTIFIER', var_token[3], result[3])
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
         
         # Handle string concatenation
         elif current[1] == 'SMOOSH':
@@ -927,8 +885,6 @@ class Execute(Parser):
             if len(self.op_stack) == 1:
                 result = self.op_stack.pop()  # ('NONE', value, 'result', dtype)
                 self.symbol_table[var_token[1]] = (result[1], 'IDENTIFIER', var_token[3], result[3])
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
 
 
 
@@ -953,9 +909,6 @@ class Execute(Parser):
                 result = self.op_stack.pop()  # ('NONE', value, 'result', dtype)
                 old_entry = self.symbol_table[var_token[1]]
                 self.symbol_table[var_token[1]] = (result[1], old_entry[1], old_entry[2], result[3])
-                print(f"  ✓ Assignment: {var_token[1]} = {result[1]} (type: {result[3]})")
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
         
         # Handle boolean expressions
         elif current[1] in ['BOTH OF', 'EITHER OF', 'WON OF', 'NOT']:
@@ -969,9 +922,6 @@ class Execute(Parser):
                 result = self.op_stack.pop()
                 old_entry = self.symbol_table[var_token[1]]
                 self.symbol_table[var_token[1]] = (result[1], old_entry[1], old_entry[2], result[3])
-                print(f"  ✓ Assignment: {var_token[1]} = {result[1]} (type: {result[3]})")
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
         
         # Handle infinite arity boolean expressions
         elif current[1] in ['ALL OF', 'ANY OF']:
@@ -981,9 +931,6 @@ class Execute(Parser):
                 result = self.op_stack.pop()
                 old_entry = self.symbol_table[var_token[1]]
                 self.symbol_table[var_token[1]] = (result[1], old_entry[1], old_entry[2], result[3])
-                print(f"  ✓ Assignment: {var_token[1]} = {result[1]} (type: {result[3]})")
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
         
         # Handle comparison expressions
         elif current[1] in ['BOTH SAEM', 'DIFFRINT']:
@@ -997,9 +944,6 @@ class Execute(Parser):
                 result = self.op_stack.pop()
                 old_entry = self.symbol_table[var_token[1]]
                 self.symbol_table[var_token[1]] = (result[1], old_entry[1], old_entry[2], result[3])
-                print(f"  ✓ Assignment: {var_token[1]} = {result[1]} (type: {result[3]})")
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
         
         # Handle string concatenation
         elif current[1] == 'SMOOSH':
@@ -1009,9 +953,6 @@ class Execute(Parser):
                 result = self.op_stack.pop()
                 old_entry = self.symbol_table[var_token[1]]
                 self.symbol_table[var_token[1]] = (result[1], old_entry[1], old_entry[2], result[3])
-                print(f"  ✓ Assignment: {var_token[1]} = {result[1]} (type: {result[3]})")
-            else:
-                print(f"Error: Stack not fully reduced. Remaining: {self.op_stack}")
         
         # Handle variable assignment: <variable> R <variable>
         elif current[2] == 'IDENTIFIER':
@@ -1022,10 +963,6 @@ class Execute(Parser):
                 
                 old_entry = self.symbol_table[var_token[1]]
                 self.symbol_table[var_token[1]] = (source_value, old_entry[1], old_entry[2], source_dtype)
-                print(f"  ✓ Assignment: {var_token[1]} = {source_value} (from {current[1]}, type: {source_dtype})")
-                self.consume()
-            else:
-                print(f"Error: Variable '{current[1]}' not found in symbol table")
                 self.consume()
         
         # Handle literal assignment: <variable> R <literal>
@@ -1041,11 +978,9 @@ class Execute(Parser):
             
             old_entry = self.symbol_table[var_token[1]]
             self.symbol_table[var_token[1]] = (value, old_entry[1], old_entry[2], dtype)
-            print(f"  ✓ Assignment: {var_token[1]} = {value} (type: {dtype})")
             self.consume()
         
         else:
-            print(f"Error: Unexpected token in assignment: {current}")
             self.consume()
         
         # Consume newline if present
@@ -1218,16 +1153,12 @@ class Execute(Parser):
         if type == 1:
             # Update symbol table with new value and type
             self.symbol_table[var_name] = (new_value, old1, old2, new_type)
-            print(f"  ✓ Recast: {var_name} from {current_type} to {new_type}, value: {new_value}")
 
         elif type == 2:
             self.symbol_table[var_name] =  (new_value, old1, old2, new_type)
-            print(f"  ✓ Recast: {var_assign[1]} from {current_type} to {new_type}, value: {new_value}")
 
         elif type == 3:
             self.it_var.append((new_value, old1, old2, new_type))
-            print(f"  ✓ Recast: {var_name} from {current_type} to {new_type}, value: {new_value}")
-            print("IT VAR CHANGED")
 
 
         
@@ -1426,7 +1357,6 @@ class Execute(Parser):
         if loop_end_pos is None:
             raise Exception(f"Syntax Error: Missing 'IM OUTTA YR {label}' for loop '{label}'")
 
-        print(f"  → Executing loop '{label}'")
 
     
         iteration = 0
@@ -1461,7 +1391,6 @@ class Execute(Parser):
 
                 # GTFO handler
                 if current[1] == 'GTFO':
-                    print("    → GTFO: Breaking out of loop")
                     self.consume()
                     broke_out = True
                     break
@@ -1517,7 +1446,6 @@ class Execute(Parser):
         # Consume the loop label
         self.consume()
 
-        print(f"  ✓ Loop '{label}' completed after {iteration} iterations")
 
         # Optional newline
         if self.current_token() and self.current_token()[2] == 'NEWLINE':

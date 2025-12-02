@@ -34,31 +34,22 @@ def run_cli():
     else:
         lexer_success = False
 
-    print("====================== All Tokens ======================\n")
-    for i in tokens:
-        print(f"Token:\t{i}\n")
-    print("========================================================\n")
 
-        # ----------------- Parsing -----------------
-    print("=============== LEXER HERE ===============")
-    if lexer_sucess:
-
-        print("\n===============\n Lexer Success \n===============\n")
+        # ----------------- Parsing --------        ---------
+    if lexer_success:
             # ----------------- Parsing -----------------
-        print("=============== PARSER HERE ===============")
-        success, parser, symbol_table, function_dictionary = parse_lolcode(tokens)
+        success, parser, symbol_table, function_dictionary, parse_errors = parse_lolcode(tokens)
         if success:
-            print("\n===========================\nParsing success\n===========================\n")
-
             semantic_success, semantic_errors = analyze_lolcode(tokens, symbol_table, function_dictionary)
-
             if semantic_success:
-                print("\n=======================\n Semantic Success\n===========================\n")
-
                 final_symbol_table, final_function_table, final_errors = execute_lolcode(tokens, symbol_table, function_dictionary)
+            else:
+                for i in semantic_errors:
+                    print(i)
         else:
-            print("\n===========================\nParsing failed, check errors above\n===========================\n")
-
+            for i in parse_errors:
+                print(i)
+                        
     else:
         lexer.print_errors()
 

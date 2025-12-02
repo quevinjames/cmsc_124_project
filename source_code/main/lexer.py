@@ -231,22 +231,16 @@ class Lexer:
                     # IDENTIFIER ——> check invalid keyword
                     if token_type == "IDENTIFIER":
                         upper = value.upper()
-                        if upper in self.valid_keywords:
-                            # This is a keyword but matched wrongly as identifier
-                            self.errors.append(
-                                f"Invalid use of keyword '{value}' at line {final_line_num}"
-                            )
-                        else:
-                            # Check if identifier looks like a broken keyword
-                            # RULE: if it's ALL CAPS and similar to a keyword, mark as invalid
-                            if value.isupper():
-                                # Compute similarity by prefix length
-                                for kw in self.valid_keywords:
-                                    if kw.startswith(value[0:2]):
-                                        self.errors.append(
-                                            f"Invalid keyword '{value}' at line {final_line_num}"
-                                        )
-                                        break
+                                                    # Check if identifier looks like a broken keyword
+                        # RULE: if it's ALL CAPS and similar to a keyword, mark as invalid
+                        if value.isupper():
+                            # Compute similarity by prefix length
+                            for kw in self.valid_keywords:
+                                if kw.startswith(value[0:2]):
+                                    self.errors.append(
+                                        f"Invalid keyword '{value}' at line {final_line_num}"
+                                    )
+                                    break
 
                     tokens.append((description, value, token_type, final_line_num))
                     pos = match.end()
@@ -310,32 +304,8 @@ class Lexer:
 
 
 # ======================= ERROR HANDLING ==========================
-    def print_errors(self):
-        """Print all lexer errors collected during tokenization"""
-        if not self.errors:
-            print("No lexer errors found.")
-            return
-
-        print("\n========== LEXER ERRORS ==========")
-        for err in self.errors:
-            print(err)
-        print("==================================\n")
-
+    
     # ================================================================
     # ======================= UTILITIES =============================
     # ================================================================
-    def print_tokens(self, tokens):
-        for description, token, _, line_num in tokens:
-            print(f"Line {line_num}: {description} {token}")
-
-    def print_statistics(self):
-        print("\n===========================================")
-        print(f"Keywords: {self.keyword_count}")
-        print(f"Identifiers: {self.identifier_count}")
-        print(f"NUMBR Literals: {self.numbr_literal_count}")
-        print(f"NUMBAR Literals: {self.numbar_literal_count}")
-        print(f"YARN Literals: {self.yarn_literal_count}")
-        print(f"TROOF Literals: {self.troof_literal_count}")
-        print(f"Operators: {self.operator_count}")
-        print(f"Other Symbols: {self.other_symbol_count}\n")
-        print("===========================================\n")
+  

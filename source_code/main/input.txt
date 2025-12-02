@@ -1,11 +1,31 @@
 HAI
-WAZZUP
-I HAS A str ITZ "hello"
-I HAS A temp ITZ 1
-BUHBYE
+    WAZZUP
+        BTW variable dec
+        I HAS A x
+        I HAS A y
+    BUHBYE
+    
+    GIMMEH x
+    GIMMEH y
 
-IM IN YR print10 UPPIN YR temp TIL BOTH SAEM temp AN 10
-VISIBLE temp
-IM OUTTA YR print10
+    VISIBLE x + "+" + y + " = " + SUM OF x AN y
+    VISIBLE x + "-" + y + " = " + DIFF OF x AN y
+    VISIBLE x + "*" + y + " = " + PRODUKT OF x AN y
+    VISIBLE x + "/" + y + " = " + QUOSHUNT OF x AN y
+    VISIBLE x + "%" + y + " = " + MOD OF x AN y
 
-KTHXBYE
+    VISIBLE "max(" + x + "," + y + ") = " + BIGGR OF x AN y
+    VISIBLE "min(" + x + "," + y + ") = " + SMALLR OF x AN y
+    
+    BTW x^2 + y^2
+    VISIBLE SUM OF PRODUKT OF x AN x AN PRODUKT OF y AN y
+    BTW (x+y)^2
+    VISIBLE PRODUKT OF SUM OF x AN y AN SUM OF x AN y
+    BTW max(x,y) - min(x,y)
+    VISIBLE DIFF OF BIGGR OF x AN y AN SMALLR OF x AN y
+
+    BTW x + y/x + 0
+    VISIBLE SUM OF x AN SUM OF QUOSHUNT OF y AN x AN FAIL
+    VISIBLE SUM OF x AN SUM OF QUOSHUNT OF "17" AN x AN FAIL
+    VISIBLE "asdkfjal"
+KTHXBYE                                                     
