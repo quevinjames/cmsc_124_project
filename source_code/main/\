@@ -11,8 +11,6 @@ class Execute(Parser):
         self.it_var = []
         self.outputs = []
 
-        self.function_bodies = {}
-
     def get_value(self, token):
         """Extract value and datatype from a token"""
         if token[2] == 'IDENTIFIER':
@@ -514,7 +512,7 @@ class Execute(Parser):
                         self.outputs.append(str(result[1]))
 
                 elif current[1] == 'IT':
-                    self.outputs.append(str(self.it_var))
+                    self.outputs.append(str(self.it_var[-1][0]))
 
                 # Simple value
                 else:
@@ -565,8 +563,7 @@ class Execute(Parser):
 
         elif token[1] == 'IM IN YR':
             self.execute_loop()
-
-              
+        
         elif token[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF', 'BIGGR OF', 'SMALLR OF']:
             self.execute_arithmetic_expr()
             
@@ -1589,65 +1586,342 @@ class Execute(Parser):
 
         return 'FAIL'   
 
-    def store_function_bodies(self):
+
+    def execute_function_definition(self):
         """
-        Scan through all tokens and store complete function definitions.
-        Stores tokens from 'HOW IZ I' to 'IF U SAY SO' (inclusive) for each function.
-        Key: function name
-        Value: list of tokens for that function
+        Execute function definition: HOW IZ I <function name> [YR <parameter1> [AN YR <parameter2> ...]]
+        Skip the body - it will only be executed when the function is called
         """
-        pos = 0
+        first = self.current_token()[1]
         
-        while pos < len(self.tokens):
-            token = self.tokens[pos]
+        # Handle merged vs split tokens
+        if first == "HOW IZ I":  # merged
+            self.consume()
+        else:  # split
+            self.consume()  # HOW
+            self.consume()  # IZ
+            self.consume()  # I
+        
+        # Get function name
+        func_name = self.consume()[1]
+        
+        # Skip parameters (already in function_dictionary)
+        while self.current_token() and self.current_token()[1] != "IF U SAY SO":
+            token = self.current_token()[1]
             
-            # Check if we found a function definition
-            if token[1] == 'HOW IZ I':
-                # Get function name (next token after HOW IZ I)
-                if pos + 1 < len(self.tokens):
-                    func_name = self.tokens[pos + 1][1]
+            # Skip YR, AN, and parameter names
+            if token in ("YR", "AN") or self.current_token()[2] == "IDENTIFIER":
+                self.consume()
+            elif self.current_token()[2] == "NEWLINE":
+                self.consume()
+            else:
+                break
+        
+        # Find and skip to the end of function (IF U SAY SO)
+        func_end_pos = self.find_function_end()
+        if func_end_pos is None:
+            raise Exception(f"Syntax Error: Missing 'IF U SAY SO' for function '{func_name}'")
+        
+        # Jump to end of function definition
+        self.position = func_end_pos
+        
+        # Consume "IF U SAY SO" (merged or split)
+        end_token = self.current_token()[1]
+        if end_token == "IF U SAY SO":  # merged
+            self.consume()
+        else:  # split
+            self.consume()  # IF
+            self.consume()  # U
+            self.consume()  # SAY
+            self.consume()  # SO
+        
+        # Optional newline
+        if self.current_token() and self.current_token()[2] == 'NEWLINE':
+            self.consume()
+
+
+    def find_function_end(self):
+        """Find position of 'IF U SAY SO', supporting merged and split tokens."""
+        saved = self.position
+        depth = 1
+        
+        while self.position < len(self.tokens):
+            tok = self.tokens[self.position][1]
+            
+            # Nested function definition (merged)
+            if tok == "HOW IZ I":
+                depth += 1
+            
+            # Function end (merged)
+            elif tok == "IF U SAY SO":
+                depth -= 1
+                if depth == 0:
+                    end = self.position
+                    self.position = saved
+                    return end
+            
+            # Split version
+            elif tok == "HOW":
+                if self.position + 2 < len(self.tokens):
+                    n1 = self.tokens[self.position + 1][1]
+                    n2 = self.tokens[self.position + 2][1]
+                    if n1 == "IZ" and n2 == "I":
+                        depth += 1
+            
+            elif tok == "IF":
+                if self.position + 3 < len(self.tokens):
+                    n1 = self.tokens[self.position + 1][1]
+                    n2 = self.tokens[self.position + 2][1]
+                    n3 = self.tokens[self.position + 3][1]
+                    if n1 == "U" and n2 == "SAY" and n3 == "SO":
+                        depth -= 1
+                        if depth == 0:
+                            end = self.position
+                            self.position = saved
+                            return end
+            
+            self.position += 1
+        
+        self.position = saved
+        return None
+
+
+    def execute_function_call(self):
+        """
+        Execute function call: I IZ <function name> [YR <arg1> [AN YR <arg2> ...]]
+        Returns the function result (stored in IT)
+        """
+        first = self.current_token()[1]
+        
+        # Handle merged vs split tokens
+        if first == "I IZ":  # merged
+            self.consume()
+        else:  # split
+            self.consume()  # I
+            self.consume()  # IZ
+        
+        # Get function name
+        func_name = self.consume()[1]
+        
+        # Check if function exists
+        if func_name not in self.function_dictionary:
+            raise Exception(f"Runtime Error: Function '{func_name}' is not defined")
+        
+        # Get parameter names from function dictionary
+        params = self.function_dictionary[func_name]
+        
+        # Collect arguments
+        args = []
+        while self.current_token() and self.current_token()[2] != "NEWLINE":
+            token = self.current_token()
+            
+            if token[1] == "YR":
+                self.consume()
+                # Get the argument value
+                arg_token = self.current_token()
+                arg_value = self.evaluate_argument(arg_token)
+                args.append(arg_value)
+                self.consume()
+            elif token[1] == "AN":
+                self.consume()
+            else:
+                break
+        
+        # Check parameter count
+        if len(args) != len(params):
+            raise Exception(f"Runtime Error: Function '{func_name}' expects {len(params)} arguments but got {len(args)}")
+        
+        # Save current symbol table state (for scope)
+        saved_symbol_table = self.symbol_table.copy()
+        
+        # Create new scope with parameters
+        for i, (param_name, param_type) in enumerate(params):
+            # Initialize parameter with argument value
+            arg_val = args[i]
+            # Determine type based on value
+            if isinstance(arg_val, bool):
+                dtype = 'TROOF'
+                val = 'WIN' if arg_val else 'FAIL'
+            elif isinstance(arg_val, int):
+                dtype = 'NUMBR'
+                val = arg_val
+            elif isinstance(arg_val, float):
+                dtype = 'NUMBAR'
+                val = arg_val
+            elif isinstance(arg_val, str):
+                dtype = 'YARN'
+                val = arg_val
+            else:
+                dtype = 'NOOB'
+                val = 'NOOB'
+            
+            self.symbol_table[param_name] = (val, None, None, dtype)
+        
+        # Find function body
+        func_start_pos = self.find_function_body(func_name)
+        if func_start_pos is None:
+            raise Exception(f"Runtime Error: Could not find body for function '{func_name}'")
+        
+        # Execute function body
+        saved_position = self.position
+        self.position = func_start_pos
+        
+        return_value = None
+        found_return = False
+        
+        # Execute statements until IF U SAY SO or FOUND YR
+        while self.current_token():
+            token = self.current_token()[1]
+            
+            # Check for function end
+            if token == "IF U SAY SO" or (token == "IF" and self.peek() and self.peek()[1] == "U"):
+                break
+            
+            # Check for return statement (FOUND YR)
+            if token == "FOUND":
+                next_tok = self.peek()
+                if next_tok and next_tok[1] == "YR":
+                    self.consume()  # FOUND
+                    self.consume()  # YR
+                    # Evaluate return expression
+                    return_value = self.evaluate_expression()
+                    found_return = True
+                    break
+            
+            # Check for GTFO (early exit without return)
+            if token == "GTFO":
+                self.consume()
+                break
+            
+            self.execute_statement()
+        
+        # Restore position and symbol table
+        self.position = saved_position
+        self.symbol_table = saved_symbol_table
+        
+        # Store return value in IT (using it_var structure) ONLY if there was a FOUND YR
+        if found_return:
+            # return_value is the actual computed value
+            # Determine the data type
+            if isinstance(return_value, bool):
+                result_val = 'WIN' if return_value else 'FAIL'
+                result_dtype = 'TROOF'
+            elif isinstance(return_value, int):
+                result_val = return_value
+                result_dtype = 'NUMBR'
+            elif isinstance(return_value, float):
+                result_val = return_value
+                result_dtype = 'NUMBAR'
+            elif isinstance(return_value, str):
+                result_val = return_value
+                result_dtype = 'YARN'
+            else:
+                result_val = 'NOOB'
+                result_dtype = 'NOOB'
+            
+            # Store in symbol table
+            self.symbol_table['IT'] = (result_val, None, None, result_dtype)
+            
+            # Store in it_var: (token_value, actual_value, token_type, data_type)
+            self.it_var.append((result_val, result_val, 'result', result_dtype))
+        # If no FOUND YR, IT remains unchanged (don't modify it)
+        
+        return return_value
+
+
+    def find_function_body(self, func_name):
+        """Find the starting position of a function's body."""
+        saved = self.position
+        self.position = 0
+        
+        while self.position < len(self.tokens):
+            tok = self.tokens[self.position][1]
+            
+            # Look for function definition
+            if tok == "HOW IZ I" or tok == "HOW":
+                start = self.position
+                
+                # Skip to function name
+                if tok == "HOW IZ I":
+                    self.consume()
+                else:
+                    self.consume()  # HOW
+                    self.consume()  # IZ
+                    self.consume()  # I
+                
+                # Check function name
+                name_tok = self.current_token()
+                if name_tok and name_tok[1] == func_name:
+                    # Skip parameters and newlines to find body start
+                    while self.current_token() and self.current_token()[2] == "NEWLINE":
+                        self.consume()
                     
-                    # Find the end of this function (IF U SAY SO)
-                    start_pos = pos
-                    end_pos = pos
-                    
-                    # Search for IF U SAY SO
-                    while end_pos < len(self.tokens):
-                        if self.tokens[end_pos][1] == 'IF U SAY SO':
-                            # Include IF U SAY SO in the stored tokens
-                            end_pos += 1
+                    while self.current_token():
+                        t = self.current_token()[1]
+                        if t in ("YR", "AN") or self.current_token()[2] == "IDENTIFIER":
+                            self.consume()
+                        elif self.current_token()[2] == "NEWLINE":
+                            self.consume()
                             break
-                        end_pos += 1
+                        else:
+                            break
                     
-                    # Store the complete function (from HOW IZ I to IF U SAY SO inclusive)
-                    self.function_bodies[func_name] = self.tokens[start_pos:end_pos]
-                    
-                    print(f"Stored function '{func_name}' with {len(self.function_bodies[func_name])} tokens")
-                    
-                    # Move position past this function
-                    pos = end_pos
-                    continue
+                    body_start = self.position
+                    self.position = saved
+                    return body_start
+                else:
+                    self.position = start
             
-            pos += 1
+            self.position += 1
         
-        print(f"\nTotal functions stored: {len(self.function_bodies)}")
-        print(f"Function names: {list(self.function_bodies.keys())}")
+        self.position = saved
+        return None
 
 
+    def evaluate_argument(self, token):
+        """Evaluate a single argument token to its value."""
+        token_type = token[2]
+        token_value = token[1]
+        
+        if token_type == "NUMBR":
+            return int(token_value)
+        elif token_type == "NUMBAR":
+            return float(token_value)
+        elif token_type == "YARN":
+            return token_value.strip('"')
+        elif token_type == "TROOF":
+            return token_value == "WIN"
+        elif token_type == "IDENTIFIER":
+            # Get value from symbol table
+            if token_value in self.symbol_table:
+                val = self.symbol_table[token_value][0]
+                dtype = self.symbol_table[token_value][3]
+                
+                if dtype == 'NUMBR':
+                    return int(val)
+                elif dtype == 'NUMBAR':
+                    return float(val)
+                elif dtype == 'TROOF':
+                    return val == 'WIN'
+                elif dtype == 'YARN':
+                    return val
+                else:
+                    return val
+            else:
+                raise Exception(f"Runtime Error: Variable '{token_value}' is not defined")
+        else:
+            return token_value
 
    
 def execute_lolcode(tokens, symbol_table, function_dictionary):
     """Entry point for code execution"""
     executor = Execute(tokens, symbol_table, function_dictionary)
-    executor.store_function_bodies()
-    print(executor.function_bodies)
     executor.execute()
     new_symbol_table = executor.symbol_table
     new_function_dictionary = executor.function_dictionary
     new_errors = executor.errors
     new_outputs = executor.outputs
     print(executor.it_var)
-    print(executor.function_dictionary)
     
    
     return new_symbol_table, new_function_dictionary, new_errors

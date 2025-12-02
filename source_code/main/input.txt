@@ -1,30 +1,34 @@
 HAI
     WAZZUP
-        I HAS A x
-        I HAS A y
+        I HAS A name
+        I HAS A num1
+        I HAS A num2
     BUHBYE
-    
-    VISIBLE "Value 1: "
-    GIMMEH x
-    VISIBLE "Value 2: "
-    GIMMEH y
 
-    x IS NOW A NUMBR
-    y IS NOW A NUMBR
 
-    BTW x==y
-    VISIBLE BOTH SAEM x AN y
-    BTW x!=y
-    VISIBLE DIFFRINT x AN y
+    HOW IZ I addNum YR x AN YR y
+        FOUND YR SUM OF x AN y
+    IF U SAY SO
 
-    OBTW
-        x >= y
-        x <= y
-        x < y
-        x > y
-    TLDR
-    VISIBLE BOTH SAEM BIGGR OF x AN y AN x
-    VISIBLE BOTH SAEM x AN SMALLR OF x AN y
-    VISIBLE DIFFRINT BIGGR OF x AN y AN x
-    VISIBLE DIFFRINT x AN SMALLR OF x AN y
-KTHXBYE                                             
+    HOW IZ I printName YR person
+        VISIBLE "Hello, " + person
+        GTFO
+    IF U SAY SO
+
+    HOW IZ I printNum YR x
+        FOUND YR x
+    IF U SAY SO
+
+    GIMMEH num1
+    GIMMEH num2
+
+    I IZ addNum YR num1 AN YR num2
+    VISIBLE IT
+
+    GIMMEH name
+    I IZ printName YR name
+    VISIBLE IT
+
+
+
+KTHXBYE                                    
