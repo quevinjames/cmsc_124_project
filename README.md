@@ -62,7 +62,7 @@ Key Features: <br/>
 3. Choose Mode:
     - The terminal will ask: Run in GUI mode? (y/n):
     - Type y to launch the GUI.
-    - Type n to run in CLI or basically won't run in GUI.
+    - Type n to run in CLI or basically won't run GUI.
 4. In GUI Mode:
     - Click "Upload File" to load a .lol file (sample files are in the test cases folder).
     - Click "Analyze" to tokenize, parse, and execute the code.
@@ -75,4 +75,5 @@ Key Features: <br/>
 <br/>
 
 ## Note to Instructor:
+
 See the various branches in this repository to see the significant commits of other members of this group project. Thanks!
