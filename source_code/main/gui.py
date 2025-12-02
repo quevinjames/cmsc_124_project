@@ -99,7 +99,7 @@ class LOLGui(tk.Tk):
         tk.Label(header_frame, text="LOLCODE INTERPRETER", font=("Segoe UI", 18, "bold"), 
                  bg=self.colors["bg_header"], fg="white").place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-        # ================== TOOLBAR ==================
+        # =========== TOOLBAR ==========
         toolbar = tk.Frame(self, bg="white", height=50, bd=1, relief="solid")
         toolbar.pack(fill=tk.X, side=tk.TOP)
         toolbar.pack_propagate(False)
@@ -108,13 +108,21 @@ class LOLGui(tk.Tk):
         ttk.Button(toolbar, text="Analyze", style="Success.TButton", command=self.run_execution).pack(side=tk.LEFT, padx=10, pady=8)
         ttk.Button(toolbar, text="Clear All", style="Danger.TButton", command=self.clear_all).pack(side=tk.RIGHT, padx=20, pady=8)
 
-        # ================== MAIN CONTENT PANE ==================
-        main_pane = tk.PanedWindow(self, orient=tk.HORIZONTAL, bg=self.colors["bg_main"], sashwidth=4, sashrelief="flat")
-        main_pane.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # ======== PRIMARY VERTICAL PANE =========
+        # This acts as the main container that splits TOP (Editors) and BOTTOM (Console)
+        self.vertical_pane = tk.PanedWindow(self, orient=tk.VERTICAL, bg=self.colors["bg_main"], sashwidth=6, sashrelief="flat")
+        self.vertical_pane.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # ======== TOP CONTENT PANE (Horizontal) =========
+        # This splits Source Code | Lexemes | Tables
+        self.top_pane = tk.PanedWindow(self.vertical_pane, orient=tk.HORIZONTAL, bg=self.colors["bg_main"], sashwidth=4, sashrelief="flat")
+        
+        # Add the top pane to the vertical pane first (Top half)
+        self.vertical_pane.add(self.top_pane, stretch="always", height=550) # Set default height for top part
 
         # ----------------- LEFT PANEL: Source Code -----------------
-        left_frame = tk.Frame(main_pane, bg=self.colors["bg_main"])
-        main_pane.add(left_frame, minsize=350, stretch="always")
+        left_frame = tk.Frame(self.top_pane, bg=self.colors["bg_main"])
+        self.top_pane.add(left_frame, minsize=350, stretch="always")
 
         ttk.Label(left_frame, text="Source Code", style="Section.TLabel").pack(anchor="w", pady=(0, 5))
         
@@ -137,8 +145,8 @@ class LOLGui(tk.Tk):
         self.update_line_numbers()
 
         # ----------------- MIDDLE PANEL: Lexemes -----------------
-        mid_frame = tk.Frame(main_pane, bg=self.colors["bg_main"])
-        main_pane.add(mid_frame, minsize=250)
+        mid_frame = tk.Frame(self.top_pane, bg=self.colors["bg_main"])
+        self.top_pane.add(mid_frame, minsize=250)
 
         ttk.Label(mid_frame, text="Lexemes", style="Section.TLabel").pack(anchor="w", pady=(0, 5))
 
@@ -158,8 +166,8 @@ class LOLGui(tk.Tk):
         lex_scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
         # ----------------- RIGHT PANEL: Tables (Stacked) -----------------
-        right_frame = tk.Frame(main_pane, bg=self.colors["bg_main"])
-        main_pane.add(right_frame, minsize=350)
+        right_frame = tk.Frame(self.top_pane, bg=self.colors["bg_main"])
+        self.top_pane.add(right_frame, minsize=350)
 
         # Vertical PanedWindow to stack Symbol Table (Top) and Function Table (Bottom)
         right_pane = tk.PanedWindow(right_frame, orient=tk.VERTICAL, bg=self.colors["bg_main"], sashwidth=4)
@@ -171,7 +179,6 @@ class LOLGui(tk.Tk):
         
         ttk.Label(sym_frame, text="Symbol Table", style="Section.TLabel").pack(anchor="w", pady=(0, 5))
         
-        # UPDATED: 2 Columns -> Identifier, Value
         self.symbol_table = ttk.Treeview(sym_frame, columns=("Identifier", "Value"), show="headings")
         self.symbol_table.heading("Identifier", text="Identifier")
         self.symbol_table.heading("Value", text="Value")
@@ -185,7 +192,6 @@ class LOLGui(tk.Tk):
 
         ttk.Label(func_frame, text="Function Table", style="Section.TLabel").pack(anchor="w", pady=(10, 5))
 
-        # UPDATED: 3 Columns -> Function name, Variable name, Value
         self.function_table = ttk.Treeview(func_frame, columns=("Function", "Variable", "Value"), show="headings")
         self.function_table.heading("Function", text="Function Name")
         self.function_table.heading("Variable", text="Variable Name")
@@ -195,9 +201,10 @@ class LOLGui(tk.Tk):
         self.function_table.column("Value", width=100)
         self.function_table.pack(fill=tk.BOTH, expand=True)
 
-        # ================== CONSOLE (Bottom) ==================
-        console_frame = tk.Frame(self, bg=self.colors["bg_main"], height=150)
-        console_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=10, pady=(0, 10))
+        # ================== CONSOLE PANE (Bottom) ==================
+        # This is added to the MAIN VERTICAL PANE
+        console_frame = tk.Frame(self.vertical_pane, bg=self.colors["bg_main"])
+        self.vertical_pane.add(console_frame, minsize=150, stretch="never")
         
         ttk.Label(console_frame, text="Terminal Output", style="Section.TLabel").pack(anchor="w", pady=(5, 2))
         
@@ -217,8 +224,8 @@ class LOLGui(tk.Tk):
         self.line_numbers.yview_moveto(args[0])
 
     def update_line_numbers(self, event=None):
-        line_count = int(self.source_text.index('end-1c').split('.')[0])
-        lines = "\n".join(str(i) for i in range(1, line_count + 1))
+        lines = self.source_text.get('1.0', 'end-1c').count('\n') + 1
+        line_content = "\n".join(str(i) for i in range(1, lines + 1))
         self.line_numbers.config(state="normal")
         self.line_numbers.delete("1.0", tk.END)
         self.line_numbers.insert("1.0", lines)
@@ -329,29 +336,21 @@ class LOLGui(tk.Tk):
         if var_data:
             for var_name, data in var_data.items():
                 val = "NOOB"
-                
-                # Robustly handle different tuple structures
                 if isinstance(data, (tuple, list)):
-                    # Grab value from index 0
                     if len(data) >= 1:
                         val = data[0]
                 else:
                     val = data
-
-                # Insert into 2-column table
                 self.symbol_table.insert("", tk.END, values=(var_name, val))
 
         # --- Update Function Table (Function Name, Variable Name, Value) ---
         if func_data:
             for func_name, params in func_data.items():
                 if isinstance(params, list):
-                    # Iterate through parameters to create a row for each
                     for param in params:
                         if isinstance(param, (tuple, list)) and len(param) >= 1:
                             p_name = param[0]
-                            # The "Value" (often the Type or Init value) is usually at index 1
                             p_val = param[1] if len(param) > 1 else "NOOB"
-                            
                             self.function_table.insert("", tk.END, values=(func_name, p_name, p_val))
 
     def clear_all(self):
