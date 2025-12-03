@@ -12,14 +12,15 @@
 
  - made the lexer.py, parser.py, semantic.py and execute.py
  - helped in getting resources from online sources 
- - he facilitated the project *<br/>
+ - he facilitated the project 
+ - succesfully included the extra credit portion of the project specs*<br/>
  
 **Fernando IV Eugene Castro**
 
  - made the gui.py
  - fixed the error format for the lexer.py, parser.py, and semantic.py
  - made the README.md file
- - fixed the 
+ - debugged the parser, lexer and gui
 
 
 **LOLCODE Interpreter** </br>
@@ -74,7 +75,7 @@ Key Features: <br/>
 
 
 ## References
-- 
+- slides and handouts given in lab and lecture 
 <br/>
 
 ## Note to Instructor:
