@@ -647,7 +647,17 @@ class Execute(Parser):
                 final_result = self.op_stack.pop()
                 self.it_var.append((final_result[1], final_result[0], final_result[2], final_result[3]))
                 return final_result
-        
+
+        elif token[2] == 'IDENTIFIER' and self.peek() and self.peek()[2] == 'NEWLINE':
+            var_name = token[1]
+            if var_name in self.symbol_table:
+                value, _, _, dtype = self.symbol_table[var_name]
+                # Store in IT variable
+                self.it_var.append((value, token[0], token[2], dtype))
+                self.consume()  # Consume the identifier
+            else:
+                # Variable not found, just consume and move on
+                self.consume()        
         else:
             # Unknown token - consume to avoid infinite loop
             self.consume()
@@ -1315,87 +1325,112 @@ class Execute(Parser):
         if self.current_token() and self.current_token()[1] == 'OIC':
             self.consume()
 
-        def execute_switch(self):
-            # Consume 'WTF?'
-            self.consume()
+    def execute_switch(self):
+        # Consume 'WTF?'
+        self.consume()
+        
+        # Skip newlines after WTF?
+        while self.current_token() and self.current_token()[2] == 'NEWLINE':
+            self.position += 1
+        
+        # Get the value to switch on from IT variable
+        # In LOLCODE, WTF? switches on the current value of IT
+        if self.it_var and len(self.it_var) > 0:
+            switch_value = self.it_var[-1][0]  # Get the value from IT
+        else:
+            switch_value = None
+        
+        case_matched = False
+        fall_through = False  # Track if we're in fall-through mode (no GTFO)
+        
+        # Process OMG cases
+        while self.current_token() and self.current_token()[1] == 'OMG':
+            self.consume()  # Consume 'OMG'
             
-            # Skip newlines after WTF?
+            # Get the case literal value
+            token = self.current_token()
+            
+            # Extract case value based on token type
+            if token[2] == 'NUMBR':  # Integer literal
+                case_value = int(token[1])
+            elif token[2] == 'NUMBAR':  # Float literal
+                case_value = float(token[1])
+            elif token[2] == 'YARN':  # String literal
+                case_value = token[1]
+            elif token[2] == 'TROOF':  # Boolean literal (WIN/FAIL)
+                case_value = token[1]
+            elif token[1] in ['WIN', 'FAIL']:  # Explicit boolean check
+                case_value = token[1]
+            else:
+                case_value = token[1]
+            
+            self.consume()  # Consume the literal
+            
+            # Skip newlines after case value
             while self.current_token() and self.current_token()[2] == 'NEWLINE':
                 self.position += 1
             
-            it_value = self.it_var[-1][0] if self.it_var else None
-            case_matched = False
-            
-            # Process OMG cases
-            while self.current_token() and self.current_token()[1] == 'OMG':
-                self.consume()  # Consume 'OMG'
-                
-                # Get the case literal value
-                token = self.current_token()
-                if token[2] == 'NUMBR':  # Integer literal
-                    case_value = int(token[1])
-                elif token[2] == 'NUMBAR':  # Float literal
-                    case_value = float(token[1])
-                elif token[2] == 'YARN':  # String literal
-                    case_value = token[1]
-                elif token[1] == 'WIN':  # Boolean literal
-                    case_value = 'WIN'
-                elif token[1] == 'FAIL':  # Boolean literal
-                    case_value = 'FAIL'
-                else:
-                    case_value = token[1]
-                
-                self.consume()  # Consume the literal
-                
-                # Skip newlines after case value
-                while self.current_token() and self.current_token()[2] == 'NEWLINE':
-                    self.position += 1
-                
-                # Check if this case matches AND we haven't matched a case yet
-                if case_value == it_value and not case_matched:
+            # Check if this case matches OR we're in fall-through mode
+            if (case_value == switch_value and not case_matched) or fall_through:
+                if not fall_through:
                     case_matched = True
-                    
-                    # Execute THIS case block only
-                    while self.current_token() and self.current_token()[1] not in ['OMG', 'OMGWTF', 'OIC']:
-                        if self.current_token()[1] == 'GTFO':
-                            self.consume()  # Consume 'GTFO'
-                            
-                            # Skip newlines after GTFO
-                            while self.current_token() and self.current_token()[2] == 'NEWLINE':
-                                self.position += 1
-                            break
+                
+                # Execute THIS case block
+                while self.current_token() and self.current_token()[1] not in ['OMG', 'OMGWTF', 'OIC']:
+                    if self.current_token()[1] == 'GTFO':
+                        self.consume()  # Consume 'GTFO'
                         
-                        self.execute_statement()
-                else:
-                    # Skip this case block
-                    while self.current_token() and self.current_token()[1] not in ['OMG', 'OMGWTF', 'OIC']:
-                        if self.current_token()[1] == 'GTFO':
+                        # Skip newlines after GTFO
+                        while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                            self.position += 1
+                        
+                        # Exit switch - skip all remaining cases until OIC
+                        fall_through = False
+                        while self.current_token() and self.current_token()[1] != 'OIC':
                             self.consume()
-                            while self.current_token() and self.current_token()[2] == 'NEWLINE':
-                                self.position += 1
-                            break
-                        self.consume()
-            
-            # Process OMGWTF (default case)
-            if self.current_token() and self.current_token()[1] == 'OMGWTF':
-                self.consume()  # Consume 'OMGWTF'
+                        break
+                    
+                    self.execute_statement()
                 
-                # Skip newlines after OMGWTF
-                while self.current_token() and self.current_token()[2] == 'NEWLINE':
-                    self.position += 1
-                
-                # Execute default case only if no case matched
-                if not case_matched:
-                    while self.current_token() and self.current_token()[1] != 'OIC':
-                        self.execute_statement()
-                else:
-                    # Skip default case
-                    while self.current_token() and self.current_token()[1] != 'OIC':
+                # If we finished the case without GTFO, enable fall-through
+                if self.current_token() and self.current_token()[1] in ['OMG', 'OMGWTF']:
+                    fall_through = True
+            else:
+                # Skip this case block (no match and not in fall-through)
+                while self.current_token() and self.current_token()[1] not in ['OMG', 'OMGWTF', 'OIC']:
+                    if self.current_token()[1] == 'GTFO':
                         self.consume()
+                        while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                            self.position += 1
+                        break
+                    self.consume()
+        
+        # Process OMGWTF (default case)
+        if self.current_token() and self.current_token()[1] == 'OMGWTF':
+            self.consume()  # Consume 'OMGWTF'
             
-            # Consume 'OIC'
-            if self.current_token() and self.current_token()[1] == 'OIC':
-                self.consume()
+            # Skip newlines after OMGWTF
+            while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                self.position += 1
+            
+            # Execute default case if no case matched OR if we're in fall-through mode
+            if not case_matched or fall_through:
+                while self.current_token() and self.current_token()[1] != 'OIC':
+                    if self.current_token()[1] == 'GTFO':
+                        self.consume()
+                        while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                            self.position += 1
+                        break
+                    self.execute_statement()
+            else:
+                # Skip default case
+                while self.current_token() and self.current_token()[1] != 'OIC':
+                    self.consume()
+        
+        # Consume 'OIC'
+        if self.current_token() and self.current_token()[1] == 'OIC':
+            self.consume()
+
 
     def execute_loop(self):
         """Execute loop: IM IN YR <label> UPPIN/NERFIN YR <var> TIL/WILE <condition>"""
@@ -1816,6 +1851,7 @@ def execute_lolcode(tokens, symbol_table, function_dictionary):
     new_function_dictionary = executor.function_dictionary
     new_errors = executor.errors
     new_outputs = executor.outputs
+    print(executor.it_var)
     if len(executor.it_var) != 0:
         it_var = executor.it_var[-1][0]
         new_symbol_table['IT'] = it_var
