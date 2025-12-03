@@ -15,13 +15,35 @@ class Execute(Parser):
 
     def get_value(self, token):
         """Extract value and datatype from a token"""
+        
+        # 1. === HANDLE 'IT' VARIABLE ===
+        # 'IT' is not in the symbol table; it lives in self.it_var
+        if token[1] == 'IT':
+            if len(self.it_var) > 0:
+                # self.it_var usually stores tuples like (value, type)
+                # We take the last item [-1] from the stack
+                val_tuple = self.it_var[-1]
+                
+                # Handle case where it_var stores (value, type) or just value
+                if isinstance(val_tuple, tuple):
+                    return val_tuple[0], val_tuple[1]
+                else:
+                    # Fallback if it just stored the value
+                    return val_tuple, self.determine_data_type(val_tuple)
+            else:
+                return "NOOB", "NOOB"
+
+        # 2. === HANDLE IDENTIFIERS ===
         if token[2] == 'IDENTIFIER':
+            if token[1] not in self.symbol_table:
+                # This should ideally be caught by semantic analysis, but safe to check here
+                return "NOOB", "NOOB"
+
             value = self.symbol_table[token[1]][0]
             dtype = self.symbol_table[token[1]][3]
             
             # If the identifier holds a YARN, try to convert it to numeric
             if dtype == 'YARN':
-                # Try to cast YARN to NUMBR or NUMBAR
                 if re.match(r'^-?[0-9]+$', str(value)):
                     value = float(value)
                     dtype = 'NUMBAR'
@@ -34,7 +56,10 @@ class Execute(Parser):
                 elif value == 'FAIL':
                     value = 0.0
                     dtype = 'NUMBAR'
+            
+            return value, dtype
                     
+        # 3. === HANDLE LITERALS ===
         elif token[2] == 'NUMBR':
             value = int(token[1])
             dtype = 'NUMBR'
@@ -44,6 +69,10 @@ class Execute(Parser):
         elif token[2] == 'YARN':
             # Implicit typecasting for YARN literals
             yarn_val = token[1]
+            # Strip quotes if they exist
+            if yarn_val.startswith('"') and yarn_val.endswith('"'):
+                yarn_val = yarn_val[1:-1]
+
             if re.match(r'^-?[0-9]+$', yarn_val):
                 value = int(yarn_val)
                 dtype = 'NUMBR'
@@ -59,6 +88,7 @@ class Execute(Parser):
             else:
                 value = yarn_val
                 dtype = 'YARN'
+
         elif token[2] == 'TROOF':
             # Convert TROOF to numeric for arithmetic
             if token[1] == 'WIN':

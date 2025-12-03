@@ -91,6 +91,33 @@ class SemanticAnalyzer(Parser):
         else:
             # For any unhandled token, consume it to avoid infinite loop
             self.consume()
+
+    def analyze_operand(self, token):
+        """
+        Helper to check if an operand is valid.
+        Used by analyze_expression to validate variables and literals.
+        """
+        
+        # 1. Allow 'IT' keyword
+        if token[1] == 'IT':
+            return True
+
+        # 2. Check Variables (Identifiers)
+        if token[2] == 'IDENTIFIER':
+            # Check if variable is declared in the symbol table
+            if token[1] not in self.symbol_table:
+                self.errors.append(f"Error on line {token[3]}: Variable '{token[1]}' used before declaration.")
+                return False
+            return True
+            
+        # 3. Allow Literals
+        elif token[2] in ['NUMBR', 'NUMBAR', 'YARN', 'TROOF']:
+            return True
+        
+        # 4. Handle invalid types
+        else:
+            self.errors.append(f"Error on line {token[3]}: Invalid operand '{token[1]}'")
+            return False
     
     def analyze_function_call(self):
         """Analyze function call and validate argument types"""

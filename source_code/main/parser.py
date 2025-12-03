@@ -312,7 +312,23 @@ class Parser:
         token = self.current_token()
         if not token:
             return (None, None)
-
+        
+        # ===== Return Statement Handling =====
+        if token[1] in ['FOUND YR', 'FQ000', 'FOUND VR']:
+            return_token = self.consume()  # Consume return statement
+            # Parse the expression to return
+            expr, expr_type = self.parse_expression()
+            if expr is None:
+                ln = return_token[3] if return_token and len(return_token) > 3 else 0
+                self.add_error(ln, "Expected expression after return statement")
+                return (None, None)
+            return (expr, expr_type)
+        
+        # ===== IT special keyword =====
+        if token[1] == 'IT':
+            self.consume()
+            return ('IT', 'NOOB')  # Type determined at runtime
+        
         # ===== Literals / Identifiers =====
         if token[2] in ['NUMBR', 'NUMBAR', 'YARN', 'TROOF', 'IDENTIFIER']:
             if token[2] == 'IDENTIFIER' and token[1] not in self.symbol_table:
@@ -323,24 +339,33 @@ class Parser:
                     msg = msg + f" {self.function_line}"
                 self.add_error(ln, msg)
                 return (None, None)
-
+            
             if token[2] == 'IDENTIFIER':
                 stored = self.symbol_table.get(token[1])
                 if isinstance(stored, tuple):
                     value, data_type, _, _ = stored
                 else:
                     value = stored
-                    data_type = determine_data_type(value)
+                    data_type = self.determine_data_type(value)
             else:
                 value = token[1]
                 data_type = token[2]
-
+            
             if var_token is not None:
                 self.variables[var_token] = (value, data_type, None, None)
                 self.symbol_table[var_token[1]] = (value, data_type, None, None)
-
+            
             self.consume()
             return (value, data_type)
+        
+        # ===== IT special keyword =====
+        if token[1] == 'IT':
+            self.consume()
+            
+            return ('IT', 'IT')
+    
+    # ... rest of your parse_expression method continues here ...
+    # (the math ops, boolean ops, comparison ops, SMOOSH, etc.)
 
         # ===== Math Ops =====
         elif token[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF']:
@@ -508,9 +533,16 @@ class Parser:
     def parse_statement(self):
         """================ parse_statement ================"""
         token = self.current_token()
+        if token is None:
+            return False
+        
+        token = self.current_token()
         if not token:
             return
-
+        
+        if token[1] == 'HOW IZ I':
+            return self.parse_function_def()
+        
         if token[2] == 'IDENTIFIER' and self.peek() and self.peek()[1] == 'IS NOW A':
             self.parse_typecast(2)
 
@@ -558,49 +590,67 @@ class Parser:
         else:
             self.consume()
 
+        return False
+
     def parse_output(self):
         """================ parse_output ================"""
         self.consume('VISIBLE')
-
+        
         expressions = []
-
+        
         # Parse first expression
         expr, expr_type = self.parse_expression()
         if expr is not None:
             expressions.append((expr, expr_type))
-
+        
         # Parse additional expressions separated by '+'
         while self.current_token() and self.current_token()[1] == '+':
             plus_token = self.current_token()
             self.consume('+')
-
+            
             # Check if there's an expression after '+'
             if not self.current_token():
                 ln = plus_token[3] if len(plus_token) > 3 else 0
                 self.add_error(ln, "Expected expression after '+'")
                 return False
-
+            
             expr, expr_type = self.parse_expression()
             if expr is None:
                 ln = plus_token[3] if len(plus_token) > 3 else 0
                 self.add_error(ln, "Expected expression after '+'")
                 return False
-
+            
             expressions.append((expr, expr_type))
-
-
-        # If current token exists use its line, else 0
+        
+        # Handle IT keyword (special case)
+        if self.current_token() and self.current_token()[1] == 'IT':
+            self.consume('IT')
+            expressions.append(('IT', 'NOOB'))  # IT can be any type
+        
+        # Handle optional exclamation mark
+        if self.current_token() and self.current_token()[1] == '!':
+            self.consume('!')
+        
+        # Get line number for error reporting
         ct = self.current_token()
-        ln = ct[3] if ct and len(ct) > 3 else 0
-        if self.current_token()[1] == '!':
-            pass 
-        else:
-            self.expect_end_of_statement(f"VISIBLE statement line {ln}", ln)
+        ln = ct[3] if ct and len(ct) > 3 else (self.tokens[-1][3] if self.tokens else 0)
+        
+        # Expect end of statement
+        self.expect_end_of_statement(f"VISIBLE statement", ln)
         return expressions
 
     def parse_input(self):
-        """================ parse_input ==============="""
-        self.consume('GIMMEH')
+        """================ parse_input ================"""
+        # Handle different spellings of GIMMEH
+        token = self.current_token()
+        if token and token[1] in ['GIMMEH', 'GTPR01']:
+            self.consume()  # Consume GIMMEH/GTPR01
+        else:
+            ct = self.current_token()
+            ln = ct[3] if ct and len(ct) > 3 else 0
+            self.add_error(ln, "Expected 'GIMMEH' or 'GTPR01' for input statement")
+            return False
+        
         ct = self.current_token()
         if ct and ct[2] == 'IDENTIFIER':
             if ct[1] not in self.symbol_table:
@@ -611,12 +661,12 @@ class Parser:
             var = self.consume()
             ct2 = self.current_token()
             ln2 = ct2[3] if ct2 and len(ct2) > 3 else 0
-            self.expect_end_of_statement(f"GIMMEH statement line: {ln2}", ln2)
+            self.expect_end_of_statement(f"input statement line: {ln2}", ln2)
 
         else:
             ct = self.current_token()
             ln = ct[3] if ct and len(ct) > 3 else 0
-            self.add_error(ln, "Expecting an identifier after GIMMEH statement")
+            self.add_error(ln, "Expecting an identifier after input statement")
             return False
 
     def parse_assignment(self):
@@ -699,16 +749,47 @@ class Parser:
 
     def parse_function(self):
         """================ parse_function ================"""
-        token = self.consume('HOW IZ I')
+        # Handle different spellings of function declaration
+        token = self.current_token()
         if not token:
             return False
+        
+        # Check for different function declaration patterns
+        if token[1] in ['HOW IZ I', 'MOW ZI I']:
+            token = self.consume()
+        else:
+            # Try to handle multi-word function declaration
+            if token[1] in ['HOW', 'MOW']:
+                # Check next tokens
+                if self.peek() and self.peek()[1] in ['IZ', 'ZI']:
+                    if self.peek(2) and self.peek(2)[1] == 'I':
+                        # It's a function declaration, consume all three tokens
+                        self.consume()  # Consume HOW/MOW
+                        self.consume()  # Consume IZ/ZI
+                        self.consume()  # Consume I
+                        token = self.tokens[self.position - 1]  # Get the last token consumed
+                    else:
+                        ct = self.current_token()
+                        ln = ct[3] if ct and len(ct) > 3 else 0
+                        self.add_error(ln, "Expected 'I' after function declaration")
+                        return False
+                else:
+                    ct = self.current_token()
+                    ln = ct[3] if ct and len(ct) > 3 else 0
+                    self.add_error(ln, "Expected function declaration 'HOW IZ I' or 'MOW ZI I'")
+                    return False
+            else:
+                ct = self.current_token()
+                ln = ct[3] if ct and len(ct) > 3 else 0
+                self.add_error(ln, "Expected function declaration")
+                return False
 
         func_name_token = self.current_token()
         if func_name_token and func_name_token[2] == 'IDENTIFIER':
-            func_start_line = token[3]
+            func_start_line = token[3] if token else func_name_token[3]
             func_name = func_name_token[1]
             self.consume()
-            self.push_stack(f'FUNCTION:{func_name}', token[3])
+            self.push_stack(f'FUNCTION:{func_name}', func_start_line)
 
             self.push_scope()
 
@@ -730,33 +811,38 @@ class Parser:
                             self.add_to_scope(param_token[1], 'NOOB', 'NOOB')
                             self.consume()
 
-
             func_end_line = func_start_line
-            while self.current_token() and self.current_token()[1] != 'IF U SAY SO':
-                if self.current_token()[1] == 'FOUND YR':
-                    self.consume('FOUND YR')
+            while self.current_token() and self.current_token()[1] not in ['IF U SAY SO', 'IF U SAY 90']:
+                # Handle different spellings of FOUND YR
+                if self.current_token()[1] in ['FOUND YR', 'FQ000', 'FOUND VR']:
+                    self.consume()  # Consume FOUND YR/FQ000
                     self.parse_expression()
                 else:
                     self.parse_statement()
 
-            self.function_scopes[func_name] = {
-                'start_line': func_start_line,
-                'end_line': func_end_line,
-                'params': params
-            }
-
-            token = self.consume('IF U SAY SO')
-            if token:
-                self.pop_stack(f'FUNCTION:{func_name}')
-                self.pop_scope()
+            # Check for different spellings of function end
+            if self.current_token() and self.current_token()[1] in ['IF U SAY SO', 'IF U SAY 90']:
+                end_token = self.consume()
+                if end_token:
+                    self.pop_stack(f'FUNCTION:{func_name}')
+                    self.pop_scope()
+                    self.function_scopes[func_name] = {
+                        'start_line': func_start_line,
+                        'end_line': func_end_line,
+                        'params': params
+                    }
+                else:
+                    self.add_error(func_start_line, f"Missing function end marker for '{func_name}'")
+                    self.pop_scope()
+                    return False
             else:
-                self.add_error(func_start_line, f"Missing 'IF U SAY SO' for function '{func_name}'")
-                self.pop_scope()  # Still pop scope even on error
+                self.add_error(func_start_line, f"Missing 'IF U SAY SO' or 'IF U SAY 90' for function '{func_name}'")
+                self.pop_scope()
                 return False
         else:
             ct = self.current_token()
             ln = ct[3] if ct and len(ct) > 3 else 0
-            self.add_error(ln, "Expected function name after HOW IZ I")
+            self.add_error(ln, "Expected function name after function declaration")
             return False
 
         return True
