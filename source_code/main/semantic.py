@@ -536,4 +536,3 @@ def analyze_lolcode(tokens, symbol_table, function_dictionary):
         return False, semantic.errors
     else:
         return True, semantic.errors
-

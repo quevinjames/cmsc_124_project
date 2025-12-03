@@ -334,10 +334,11 @@ class Parser:
 
             self.consume()
             return (value, data_type)
-
+        
         elif token[1] == 'IT':
             value = -1
             data_type = None
+
         # ===== Math Ops =====
         elif token[1] in ['SUM OF', 'DIFF OF', 'PRODUKT OF', 'QUOSHUNT OF', 'MOD OF']:
             op = token[1]
@@ -584,19 +585,10 @@ class Parser:
 
             expressions.append((expr, expr_type))
 
-        while self.current_token() and self.current_token()[2] != 'NEWLINE' :
-            # Check if there's an expression after '+'
-            expr, expr_type = self.parse_expression()
-            expressions.append((expr, expr_type))
-
-
 
         # If current token exists use its line, else 0
-
-        
         ct = self.current_token()
         ln = ct[3] if ct and len(ct) > 3 else 0
-
         if self.current_token()[1] == 'IT':
             pass
         elif self.current_token()[1] == '!':
@@ -885,7 +877,7 @@ class Parser:
         self.consume('IM IN YR')
         label_token = self.current_token()
         
-        # 1. Validate Label
+        # Validate Label
         if label_token and label_token[2] == 'IDENTIFIER':
             label = label_token[1]
             self.consume()
@@ -894,7 +886,7 @@ class Parser:
             self.add_error(self.current_token()[3], "Expected loop label after IM IN YR")
             return False
 
-        # 2. Validate Operation (UPPIN / NERFIN)
+        #  Validate Operation (UPPIN / NERFIN)
         if self.current_token()[1] in ['UPPIN', 'NERFIN']:
             self.consume()
         else:
@@ -902,7 +894,7 @@ class Parser:
             self.pop_stack(f'LOOP:{label}')  # Fix: Clean stack on error
             return False
 
-        # 3. Validate 'YR'
+        #  Validate 'YR'
         if self.current_token()[1] == 'YR':
             self.consume('YR')
         else:
@@ -910,7 +902,7 @@ class Parser:
             self.pop_stack(f'LOOP:{label}')
             return False
 
-        # 4. Validate Loop Variable
+        #  Validate Loop Variable
         if self.current_token()[2] == 'IDENTIFIER':
             if self.current_token()[1] not in self.symbol_table:
                 self.add_error(self.current_token()[3], f"Variable {self.current_token()[1]} not found")
@@ -922,10 +914,10 @@ class Parser:
             self.pop_stack(f'LOOP:{label}')
             return False
 
-        # 5. Validate TIL / WILE (Fixed Logic)
+        #  Validate TIL / WILE (Fixed Logic)
         if self.current_token()[1] in ['TIL', 'WILE']:
             self.consume()
-            # 6. Parse Expression (Relaxed Logic: allow any expression)
+            #  Parse Expression (Relaxed Logic: allow any expression)
             expr_val, expr_type = self.parse_expression()
             if expr_val is None:
                 self.pop_stack(f'LOOP:{label}')
@@ -935,11 +927,11 @@ class Parser:
             self.pop_stack(f'LOOP:{label}')
             return False
 
-        # 7. Consume Newlines before body
+        #  Consume Newlines before body
         while self.current_token() and self.current_token()[2] == 'NEWLINE':
             self.consume()
 
-        # 8. Loop Body
+        #  Loop Body
         while self.current_token() and self.current_token()[1] != 'IM OUTTA YR':
             if self.current_token()[1] == 'KTHXBYE':
                 self.add_error(self.current_token()[3], "Unexpected end of file in loop (missing IM OUTTA YR)")
@@ -1136,51 +1128,6 @@ class Parser:
             return (entry[0], None, None, None)
 
         return (None, None, None, None)
-
-
-    def store_function_bodies(self):
-        """
-        Scan through all tokens and store complete function definitions.
-        Stores tokens from 'HOW IZ I' to 'IF U SAY SO' (inclusive) for each function.
-        Key: function name
-        Value: list of tokens for that function
-        """
-        pos = 0
-        
-        while pos < len(self.tokens):
-            token = self.tokens[pos]
-            
-            # Check if we found a function definition
-            if token[1] == 'HOW IZ I':
-                # Get function name (next token after HOW IZ I)
-                if pos + 1 < len(self.tokens):
-                    func_name = self.tokens[pos + 1][1]
-                    
-                    # Find the end of this function (IF U SAY SO)
-                    start_pos = pos
-                    end_pos = pos
-                    
-                    # Search for IF U SAY SO
-                    while end_pos < len(self.tokens):
-                        if self.tokens[end_pos][1] == 'IF U SAY SO':
-                            # Include IF U SAY SO in the stored tokens
-                            end_pos += 1
-                            break
-                        end_pos += 1
-                    
-                    # Store the complete function (from HOW IZ I to IF U SAY SO inclusive)
-                    self.function_bodies[func_name] = self.tokens[start_pos:end_pos]
-                    
-                    print(f"Stored function '{func_name}' with {len(self.function_bodies[func_name])} tokens")
-                    
-                    # Move position past this function
-                    pos = end_pos
-                    continue
-            
-            pos += 1
-        
-        print(f"\nTotal functions stored: {len(self.function_bodies)}")
-        print(f"Function names: {list(self.function_bodies.keys())}")
 
 
 def parse_lolcode(tokens):
