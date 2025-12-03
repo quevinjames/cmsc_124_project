@@ -371,41 +371,9 @@ class Execute(Parser):
 
         elif (isinstance(tos2, tuple) and tos2[1] in ['BOTH SAEM', 'DIFFRINT', 'BIGGR OF', 'SMALLR OF'] and isinstance(tos, tuple) and isinstance(tos1, tuple)):
 
-            if tos[2] in ['NUMBR', 'NUMBAR', 'result']:
-                right_val = tos[1]
-                right_dtype = tos[2] if tos[2] != 'result' else tos[3]
-
-            elif tos[1] in ['1']:
-                right_val = 1
-                right_dtype = 'NUMBR'
-
-            elif tos[1] in ['1.0']:
-                right_val = 1.0
-                right_dtype = 'NUMBAR'
-
-
-            elif tos[2] == 'IDENTIFIER':
-                right_val, right_dtype = self.get_value(tos)
-            else:
-                return False
-            
-            if tos1[2] in ['NUMBR', 'NUMBAR', 'result']:
-                left_val = tos1[1]
-                left_dtype = tos1[2] if tos1[2] != 'result' else tos1[3]
-
-            elif tos[1] in ['1']:
-                left_val = 1
-                left_dtype = 'NUMBR'
-
-            elif tos[1] in ['1.0']:
-                left_val = 1.0
-                left_dtype = 'NUMBAR'
-
-
-            elif tos1[2] == 'IDENTIFIER':
-                left_val, left_dtype = self.get_value(tos1)
-            else:
-                return False
+            # Use get_value to extract both operands
+            right_val, right_dtype = self.get_value(tos)
+            left_val, left_dtype = self.get_value(tos1)
             
             # Perform the operation
             result, result_dtype = self.perform_comparison_operation(
@@ -422,7 +390,6 @@ class Execute(Parser):
             self.op_stack.append(new_token)
             
             return True
-
         return False
 
     def execute_arithmetic_expr(self):
@@ -545,6 +512,10 @@ class Execute(Parser):
                 # Check for "+"
                 if self.current_token() and self.current_token()[1] == '+':
                     self.consume()
+                    continue
+
+
+                if self.current_token() and self.current_token()[2] != 'NEWLINE':
                     continue
 
                 break
@@ -1275,9 +1246,8 @@ class Execute(Parser):
             self.position += 1
         
         # Check if IT is truthy
-        # Make sure it_var exists and has the right structure
         if self.it_var and len(self.it_var) > 0:
-            it_value = self.it_var[-1][0]  # Get the value from the tuple
+            it_value = self.it_var[-1][0]
         else:
             it_value = 'FAIL'
         
@@ -1290,40 +1260,92 @@ class Execute(Parser):
         while self.current_token() and self.current_token()[2] == 'NEWLINE':
             self.position += 1
         
+        executed = False  # Track if any branch has executed
+        
+        # Handle YA RLY block
         if is_truthy:
-            # Execute YA RLY block until we hit MEBBE
+            # Execute YA RLY block
             while self.current_token() and self.current_token()[1] not in ['MEBBE', 'NO WAI', 'OIC']:
                 self.execute_statement()
-            
-            # Consume everything until OIC (skip MEBBE and NO WAI blocks)
-            while self.current_token() and self.current_token()[1] != 'OIC':
-                self.consume()
+            executed = True
         else:
-            # Skip YA RLY block until we hit MEBBE or NO WAI
+            # Skip YA RLY block
             while self.current_token() and self.current_token()[1] not in ['MEBBE', 'NO WAI', 'OIC']:
                 self.consume()
+        
+        # Handle MEBBE blocks (else-if)
+        while self.current_token() and self.current_token()[1] == 'MEBBE':
+            self.consume()  # Consume 'MEBBE'
             
-            # Skip all MEBBE blocks
-            while self.current_token() and self.current_token()[1] == 'MEBBE':
-                # Skip the entire MEBBE block
-                while self.current_token() and self.current_token()[1] not in ['MEBBE', 'NO WAI', 'OIC']:
-                    self.consume()
-            
-            # NO WAI block (optional)
-            if self.current_token() and self.current_token()[1] == 'NO WAI':
-                self.consume()  # Consume 'NO WAI'
+            if not executed:
+                # Evaluate the MEBBE condition
+                self.execute_comparison_expr()
                 
-                # Skip newlines after NO WAI
+                # Reduce stack to get result
+                while len(self.op_stack) > 1:
+                    if not self.manage_stack():
+                        break
+                
+                if len(self.op_stack) == 1:
+                    result = self.op_stack.pop()
+                    mebbe_value = result[1]
+                    
+                    # Update IT variable with the condition result
+                    self.it_var.append((result[1], result[0], result[2], result[3]))
+                    
+                    # Check if MEBBE condition is true
+                    mebbe_is_true = mebbe_value in ['WIN', 1, '1', 1.0, '1.0', True]
+                    
+                    # Skip newlines after MEBBE condition
+                    while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                        self.position += 1
+                    
+                    if mebbe_is_true:
+                        # Execute this MEBBE block
+                        while self.current_token() and self.current_token()[1] not in ['MEBBE', 'NO WAI', 'OIC']:
+                            self.execute_statement()
+                        executed = True
+                    else:
+                        # Skip this MEBBE block
+                        while self.current_token() and self.current_token()[1] not in ['MEBBE', 'NO WAI', 'OIC']:
+                            self.consume()
+                else:
+                    # Failed to evaluate condition, skip block
+                    while self.current_token() and self.current_token()[1] not in ['MEBBE', 'NO WAI', 'OIC']:
+                        self.consume()
+            else:
+                # Already executed a branch, skip this MEBBE entirely
+                # Skip the condition expression tokens until newline
+                while self.current_token() and self.current_token()[2] != 'NEWLINE':
+                    self.consume()
+                # Skip newlines
                 while self.current_token() and self.current_token()[2] == 'NEWLINE':
                     self.position += 1
-                
-                # Execute NO WAI block until OIC
+                # Skip the MEBBE block
+                while self.current_token() and self.current_token()[1] not in ['MEBBE', 'NO WAI', 'OIC']:
+                    self.consume()
+        
+        # Handle NO WAI block (else)
+        if self.current_token() and self.current_token()[1] == 'NO WAI':
+            self.consume()  # Consume 'NO WAI'
+            
+            # Skip newlines after NO WAI
+            while self.current_token() and self.current_token()[2] == 'NEWLINE':
+                self.position += 1
+            
+            if not executed:
+                # Execute NO WAI block (only if no previous branch executed)
                 while self.current_token() and self.current_token()[1] != 'OIC':
                     self.execute_statement()
+            else:
+                # Skip NO WAI block
+                while self.current_token() and self.current_token()[1] != 'OIC':
+                    self.consume()
         
         # Consume 'OIC'
         if self.current_token() and self.current_token()[1] == 'OIC':
             self.consume()
+
 
     def execute_switch(self):
         # Consume 'WTF?'

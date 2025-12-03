@@ -584,6 +584,12 @@ class Parser:
 
             expressions.append((expr, expr_type))
 
+        while self.current_token() and self.current_token()[2] != 'NEWLINE' :
+            # Check if there's an expression after '+'
+            expr, expr_type = self.parse_expression()
+            expressions.append((expr, expr_type))
+
+
 
         # If current token exists use its line, else 0
 
