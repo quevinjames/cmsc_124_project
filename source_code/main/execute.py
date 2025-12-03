@@ -501,7 +501,7 @@ class Execute(Parser):
                         self.outputs.append(str(result[1]))
 
                 elif current[1] == 'IT':
-                    self.outputs.append(str(self.it_var))
+                    self.outputs.append(str(self.it_var[-1][0]))
 
                 # Simple value
                 else:
